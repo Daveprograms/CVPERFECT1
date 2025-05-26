@@ -1,0 +1,43 @@
+# Authentication
+NEXTAUTH_URL=http://localhost:3004
+NEXTAUTH_SECRET=2gyZ3GDw3LHZQKDhPmPDL3sjREVRXPr8
+
+# Backend API
+BACKEND_URL=http://localhost:8000
+
+# Frontend
+FRONTEND_URL=http://localhost:3004
+
+# Stripe
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+STRIPE_SECRET_KEY=your_stripe_secret_key
+STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+STRIPE_PRO_MONTHLY_PRICE_ID=your_stripe_pro_monthly_price_id
+STRIPE_ONE_TIME_PRICE_ID=your_stripe_one_time_price_id
+
+# Google AI
+GOOGLE_AI_API_KEY=your_google_ai_api_key
+GEMINI_API_KEY=your_google_ai_api_key
+
+# Database
+DATABASE_URL=postgresql://postgres:Savageboy1%23@localhost:5432/cvperfect
+
+
+# JWT
+JWT_SECRET_KEY=067d22d83d8e52eabebf3e305589d3e0d566edeaa4d69d0e719f7b1cf2697c41
+
+# Email
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=davidprograms7@gmail.com
+SMTP_PASSWORD=gnaykrhvsdenlurk
+SMTP_FROM=davidprograms7@gmail.com
+
+# Firebase
+FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
+FIREBASE_API_KEY=AIzaSyAXawM9oj3SfOrjCaUYEf4x1dkCg3ffk3I
+  # Get this from Firebase Console > Project Settings > Web App
+
+
+# Developer Access    
+DEVELOPER_CODE=CVPERFECT2024
