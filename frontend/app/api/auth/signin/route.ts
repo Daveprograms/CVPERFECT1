@@ -1,29 +1,39 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { cookies } from 'next/headers'
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const { email, password } = await req.json()
+    const body = await request.json()
+    const { email, password } = body
+
+    // TODO: Replace with actual authentication logic
+    // For now, we'll accept any email/password
     if (!email || !password) {
-      return new NextResponse('Email and password are required', { status: 400 })
+      return new NextResponse(
+        JSON.stringify({ message: 'Email and password are required' }),
+        { status: 400 }
+      )
     }
 
-    const response = await fetch(`${process.env.BACKEND_URL}/api/auth/signin`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+    // Set auth token cookie
+    const cookieStore = cookies()
+    cookieStore.set('auth_token', 'dummy_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 1 week
     })
 
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.message)
-    }
-
-    const data = await response.json()
-    return NextResponse.json(data)
-  } catch (error: any) {
-    console.error('Sign in error:', error)
-    return new NextResponse(error.message, { status: 500 })
+    // Return success response with redirect URL
+    return new NextResponse(
+      JSON.stringify({ redirectUrl: '/dashboard' }),
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error('Sign in failed:', error)
+    return new NextResponse(
+      JSON.stringify({ message: 'An error occurred during sign in' }),
+      { status: 500 }
+    )
   }
 } 

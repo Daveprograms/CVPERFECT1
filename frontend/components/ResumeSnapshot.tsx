@@ -1,60 +1,43 @@
+'use client'
+
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { toast } from 'react-hot-toast'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
+import { Loader2 } from 'lucide-react'
 
 interface ResumeSnapshotProps {
   content: string
 }
 
 export function ResumeSnapshot({ content }: ResumeSnapshotProps) {
-  const [loading, setLoading] = useState(false)
   const snapshotRef = useRef<HTMLDivElement>(null)
+  const [loading, setLoading] = useState(false)
 
   const handleDownload = async (format: 'pdf' | 'docx') => {
-    if (!snapshotRef.current) return
+    if (!content) return
 
+    setLoading(true)
     try {
-      setLoading(true)
+      const response = await fetch('/api/resume/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, format })
+      })
 
-      if (format === 'pdf') {
-        const canvas = await html2canvas(snapshotRef.current, {
-          scale: 2,
-          useCORS: true,
-          logging: false
-        })
-
-        const imgData = canvas.toDataURL('image/png')
-        const pdf = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        })
-
-        const imgProps = pdf.getImageProperties(imgData)
-        const pdfWidth = pdf.internal.pageSize.getWidth()
-        const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
-
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
-        pdf.save('resume.pdf')
-      } else {
-        // For DOCX, we'll use a simple text-based approach
-        const blob = new Blob([content], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
-        const url = window.URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = 'resume.docx'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        window.URL.revokeObjectURL(url)
+      if (!response.ok) {
+        throw new Error('Failed to export resume')
       }
 
-      toast.success(`Resume downloaded as ${format.toUpperCase()}`)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `resume.${format}`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
     } catch (error) {
-      console.error('Download error:', error)
-      toast.error('Failed to download resume')
+      console.error('Export error:', error)
     } finally {
       setLoading(false)
     }
@@ -73,7 +56,10 @@ export function ResumeSnapshot({ content }: ResumeSnapshotProps) {
             className="bg-primary text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
+              <div className="flex items-center">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Exporting...
+              </div>
             ) : (
               'Download PDF'
             )}
@@ -86,7 +72,10 @@ export function ResumeSnapshot({ content }: ResumeSnapshotProps) {
             className="bg-secondary text-primary px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-primary"></div>
+              <div className="flex items-center">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Exporting...
+              </div>
             ) : (
               'Download DOCX'
             )}

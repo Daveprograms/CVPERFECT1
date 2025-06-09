@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
+import { Toaster } from 'sonner'
 import './globals.css'
 import { Providers } from '@/components/providers'
 import Layout from '@/components/layout'
@@ -24,6 +25,7 @@ export default function RootLayout({
             {children}
           </Layout>
         </Providers>
+        <Toaster />
       </body>
     </html>
   )

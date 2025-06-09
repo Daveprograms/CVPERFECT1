@@ -1,6 +1,8 @@
+'use client'
+
 import { useState, useRef, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { toast } from 'react-hot-toast'
+import { motion } from 'framer-motion'
+import { Send, Loader2 } from 'lucide-react'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -27,7 +29,7 @@ export function AIChat() {
 
     const userMessage = input.trim()
     setInput('')
-    setMessages((prev) => [...prev, { role: 'user', content: userMessage }])
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }])
     setLoading(true)
 
     try {
@@ -42,10 +44,13 @@ export function AIChat() {
       }
 
       const data = await response.json()
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.message }])
+      setMessages(prev => [...prev, { role: 'assistant', content: data.message }])
     } catch (error) {
-      toast.error('Failed to get response from AI')
       console.error('Chat error:', error)
+      setMessages(prev => [
+        ...prev,
+        { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }
+      ])
     } finally {
       setLoading(false)
     }
@@ -53,37 +58,32 @@ export function AIChat() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="p-4 border-b">
-        <h2 className="text-lg font-semibold">AI Assistant</h2>
-        <p className="text-sm text-muted-foreground">
-          Ask me anything about your resume or career
-        </p>
-      </div>
-
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <AnimatePresence>
-          {messages.map((message, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className={`flex ${
-                message.role === 'user' ? 'justify-end' : 'justify-start'
+        {messages.map((message, index) => (
+          <motion.div
+            key={index}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`max-w-[80%] rounded-lg p-3 ${
+                message.role === 'user'
+                  ? 'bg-primary text-white'
+                  : 'bg-muted text-foreground'
               }`}
             >
-              <div
-                className={`max-w-[80%] rounded-lg p-3 ${
-                  message.role === 'user'
-                    ? 'bg-primary text-white'
-                    : 'bg-muted'
-                }`}
-              >
-                <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-              </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+              {message.content}
+            </div>
+          </motion.div>
+        ))}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-muted text-foreground rounded-lg p-3">
+              <Loader2 className="w-5 h-5 animate-spin" />
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
@@ -100,13 +100,9 @@ export function AIChat() {
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="bg-primary text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-primary text-white p-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-white"></div>
-            ) : (
-              'Send'
-            )}
+            <Send className="w-5 h-5" />
           </button>
         </div>
       </form>

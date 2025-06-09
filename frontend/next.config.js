@@ -18,11 +18,17 @@ const nextConfig = {
       };
     }
 
-    // Add specific handling for undici
+    // Exclude undici from being processed
     config.module.rules.push({
       test: /node_modules\/undici/,
-      loader: 'ignore-loader'
+      use: 'null-loader'
     });
+
+    // Add alias for undici
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'undici': false
+    };
 
     return config;
   },
