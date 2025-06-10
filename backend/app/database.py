@@ -24,13 +24,27 @@ def get_db():
 
 # Create all tables
 def init_db():
-    # Create tables
-    Base.metadata.create_all(bind=engine)
-    
-    # Update password column to be nullable
-    with engine.connect() as conn:
-        conn.execute(text("""
-            ALTER TABLE users 
-            ALTER COLUMN password DROP NOT NULL;
-        """))
-        conn.commit() 
+    try:
+        # Create tables
+        Base.metadata.create_all(bind=engine)
+        
+        # Check if users table exists and has password column
+        with engine.connect() as conn:
+            result = conn.execute(text("""
+                SELECT column_name, is_nullable 
+                FROM information_schema.columns 
+                WHERE table_name = 'users' 
+                AND column_name = 'password';
+            """))
+            column_info = result.fetchone()
+            
+            # If password column exists and is not nullable, make it nullable
+            if column_info and column_info[1] == 'NO':
+                conn.execute(text("""
+                    ALTER TABLE users 
+                    ALTER COLUMN password DROP NOT NULL;
+                """))
+                conn.commit()
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+        raise e 

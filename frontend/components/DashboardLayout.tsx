@@ -15,7 +15,11 @@ import {
   Settings,
   BookOpen,
   LogOut,
-  Home
+  Home,
+  CoverLetter,
+  LearningPath,
+  GraduationCap,
+  ChartBar
 } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
@@ -85,48 +89,63 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
     {
       title: 'Dashboard',
       icon: Home,
-      href: '/dashboard',
+      link: '/dashboard'
+    },
+    {
+      title: 'Resume Analysis',
+      icon: FileText,
+      link: '/resumes/upload'
     },
     {
       title: 'Resumes',
       icon: FileText,
-      href: '/resumes',
+      link: '/resumes'
     },
     {
       title: 'AI Feedback',
       icon: Brain,
-      href: '/feedback',
+      link: '/feedback'
+    },
+    {
+      title: 'Cover Letters',
+      icon: FileText,
+      link: '/cover-letters'
+    },
+    {
+      title: 'Learning Path',
+      icon: GraduationCap,
+      link: '/learning-path'
     },
     {
       title: 'Job Matches',
       icon: Briefcase,
-      href: '/jobs',
+      link: '/jobs'
     },
     {
       title: 'LinkedIn',
       icon: Linkedin,
-      href: '/linkedin',
+      link: '/linkedin'
     },
     {
       title: 'Analytics',
-      icon: BarChart,
-      href: '/analytics',
+      icon: ChartBar,
+      link: '/analytics'
     },
     {
       title: 'Billing',
       icon: CreditCard,
-      href: '/billing',
+      link: '/billing'
     },
     {
       title: 'Blog',
       icon: BookOpen,
-      href: '/blog',
+      link: '/blog'
     },
     {
       title: 'Settings',
       icon: Settings,
-      href: '/settings',
-    },
+      link: '/settings'
+    }
   ]
 
   if (isLoading) {
@@ -170,11 +189,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           >
             <nav className="p-4 space-y-1">
               {menuItems.map((item) => {
-                const isActive = pathname === item.href
+                const isActive = pathname === item.link
                 return (
                   <Link
-                    key={item.href}
-                    href={item.href}
+                    key={item.link}
+                    href={item.link}
                     className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
                       isActive
                         ? 'bg-primary text-white'

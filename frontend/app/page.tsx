@@ -54,6 +54,16 @@ export default function LandingPage() {
               View Templates
             </Link>
           </motion.div>
+
+          {/* AI Resume Scanner Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-12 max-w-3xl mx-auto"
+          >
+            {/* Removed AI Resume Scanner section */}
+          </motion.div>
         </div>
       </section>
 
@@ -221,4 +231,91 @@ const features = [
       </svg>
     ),
   },
-] 
+]
+
+const handleResumeUpload = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  const jobDescription = (document.getElementById('jobDescription') as HTMLTextAreaElement)?.value;
+  if (jobDescription) {
+    formData.append('job_description', jobDescription);
+  }
+
+  try {
+    // Show loading state
+    const resultsDiv = document.getElementById('analysisResults');
+    if (resultsDiv) {
+      resultsDiv.innerHTML = `
+        <div class="flex items-center justify-center p-8">
+          <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+          <span class="ml-3">Analyzing your resume...</span>
+        </div>
+      `;
+      resultsDiv.classList.remove('hidden');
+    }
+
+    // Send to backend
+    const response = await fetch('/api/resume/analyze', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (!response.ok) {
+      throw new Error('Analysis failed');
+    }
+
+    const data = await response.json();
+    
+    // Update results
+    if (resultsDiv) {
+      resultsDiv.classList.remove('hidden');
+      // Update with actual data from the response
+      // This is just a placeholder - you'll need to update this with your actual data structure
+      resultsDiv.innerHTML = `
+        <div class="border rounded-lg p-6">
+          <h3 class="text-xl font-semibold mb-4">Analysis Results</h3>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="font-medium">Resume Score</span>
+              <span class="text-primary font-semibold">${data.score}/100</span>
+            </div>
+            <div class="h-2 bg-gray-200 rounded-full">
+              <div class="h-2 bg-primary rounded-full" style="width: ${data.score}%"></div>
+            </div>
+            <div class="space-y-2">
+              <h4 class="font-medium">Key Feedback</h4>
+              <ul class="space-y-2">
+                ${data.feedback.map((item: string) => `
+                  <li class="flex items-start">
+                    <svg class="w-5 h-5 text-primary mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>${item}</span>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+            <div class="pt-4">
+              <a href="/resumes/upload" class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+                View Full Analysis
+              </a>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  } catch (error) {
+    console.error('Error analyzing resume:', error);
+    // Show error state
+    const resultsDiv = document.getElementById('analysisResults');
+    if (resultsDiv) {
+      resultsDiv.innerHTML = `
+        <div class="text-center p-8 text-red-500">
+          <p>Failed to analyze resume. Please try again.</p>
+        </div>
+      `;
+      resultsDiv.classList.remove('hidden');
+    }
+  }
+}; 

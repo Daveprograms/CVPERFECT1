@@ -9,7 +9,7 @@ import stripe
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.routers import auth, resume, stripe
-from app.database import engine, Base, init_db
+from app.database import engine, Base, init_db, SessionLocal
 
 # Load environment variables
 load_dotenv('env')

@@ -15,9 +15,8 @@ STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
 STRIPE_PRO_MONTHLY_PRICE_ID=your_stripe_pro_monthly_price_id
 STRIPE_ONE_TIME_PRICE_ID=your_stripe_one_time_price_id
 
-# Google AI
-GOOGLE_AI_API_KEY=your_google_ai_api_key
-GEMINI_API_KEY=your_google_ai_api_key
+
+GEMINI_API_KEY=AIzaSyDiKfi6nycHLH7-J3Ov-o5NNKMfIe7K7ec
 
 # Database
 DATABASE_URL=postgresql://postgres:Savageboy1%23@localhost:5432/cvperfect
@@ -37,7 +36,7 @@ SMTP_FROM=davidprograms7@gmail.com
 FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
 FIREBASE_API_KEY=AIzaSyAXawM9oj3SfOrjCaUYEf4x1dkCg3ffk3I
   # Get this from Firebase Console > Project Settings > Web App
-
+                                              
 
 # Developer Access    
 DEVELOPER_CODE=CVPERFECT2024

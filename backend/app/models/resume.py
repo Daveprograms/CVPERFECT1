@@ -1,46 +1,42 @@
-from sqlalchemy import Column, Integer, String, DateTime, Float, ForeignKey, JSON, Text, Boolean
-from sqlalchemy.sql import func
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, JSON, Float
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from datetime import datetime
+import uuid
+
 from ..database import Base
 
 class Resume(Base):
     __tablename__ = "resumes"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
-    original_content = Column(Text, nullable=False)
-    enhanced_content = Column(Text, nullable=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    original_content = Column(Text)  # Base64 encoded binary content
+    enhanced_content = Column(Text, nullable=True)  # Base64 encoded binary content
     job_description = Column(Text, nullable=True)
+    linkedin_url = Column(String(255), nullable=True)
     score = Column(Float, nullable=True)
     feedback = Column(JSON, nullable=True)
-    learning_suggestions = Column(JSON, nullable=True)
-    linkedin_url = Column(String, nullable=True)
+    extracted_info = Column(JSON, nullable=True)
+    job_matches = Column(JSON, nullable=True)
+    improvements = Column(JSON, nullable=True)
     cover_letter = Column(Text, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    download_count = Column(Integer, default=0)
-    is_public = Column(Boolean, default=False)
-    public_id = Column(String, unique=True, nullable=True)  # For sharing
+    learning_path = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
     user = relationship("User", back_populates="resumes")
-    analytics = relationship("Analytics", back_populates="resume")
-
-    def __repr__(self):
-        return f"<Resume {self.id} for user {self.user_id}>"
+    versions = relationship("ResumeVersion", back_populates="resume", cascade="all, delete-orphan")
 
 class ResumeVersion(Base):
     __tablename__ = "resume_versions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    resume_id = Column(Integer, ForeignKey("resumes.id"), nullable=False)
-    content = Column(Text, nullable=False)
-    version_number = Column(Integer, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    changes = Column(JSON, nullable=True)  # Store what changed in this version
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    resume_id = Column(UUID(as_uuid=True), ForeignKey("resumes.id"))
+    content = Column(Text)  # Base64 encoded binary content
+    version_number = Column(Integer)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
-    resume = relationship("Resume")
-
-    def __repr__(self):
-        return f"<ResumeVersion {self.version_number} for resume {self.resume_id}>" 
+    resume = relationship("Resume", back_populates="versions") 

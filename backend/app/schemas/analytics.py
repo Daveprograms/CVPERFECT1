@@ -54,4 +54,32 @@ class GlobalStatsResponse(BaseModel):
     total_downloads_30d: int
     average_score: float
     subscription_distribution: Dict[str, int]
-    daily_activity: List[DailyActivity] 
+    daily_activity: List[DailyActivity]
+
+class TimeRange(str, Enum):
+    WEEK = "week"
+    MONTH = "month"
+    YEAR = "year"
+
+class UserInsights(BaseModel):
+    total_resumes: int
+    action_counts: Dict[str, int]
+    average_score: float
+    time_range: TimeRange
+    period_start: datetime
+    period_end: datetime
+
+class GlobalAnalytics(BaseModel):
+    total_users: int
+    active_users: int
+    total_resumes: int
+    action_counts: Dict[str, int]
+    subscription_distribution: Dict[str, int]
+    time_range: TimeRange
+    period_start: datetime
+    period_end: datetime
+
+class AnalyticsResponse(BaseModel):
+    resume_id: int
+    action_counts: Dict[str, int]
+    analytics: List[Dict[str, Any]] 

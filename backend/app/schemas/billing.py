@@ -10,12 +10,18 @@ class CreateCheckoutSessionResponse(BaseModel):
     session_id: str
     url: str
 
+class SubscriptionCreate(BaseModel):
+    plan_id: str
+
 class SubscriptionResponse(BaseModel):
-    subscription_type: SubscriptionType
-    subscription_end_date: Optional[datetime]
-    remaining_enhancements: int
-    stripe_subscription_id: Optional[str] = None
-    stripe_price_id: Optional[str] = None
+    id: str
+    name: str
+    type: SubscriptionType
+    price_id: Optional[str] = None
+
+class PaymentIntentResponse(BaseModel):
+    client_secret: str
+    subscription_id: Optional[str] = None
 
 class WebhookEvent(BaseModel):
     type: str
