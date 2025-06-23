@@ -4,46 +4,120 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useAuth } from '@/lib/context/AuthContext'
 import { toast } from 'react-hot-toast'
-import { ResumeSnapshot } from '@/components/ResumeSnapshot'
+import { FileText, Calendar, Target, ChevronLeft, ChevronRight, Download, Star } from 'lucide-react'
 
-interface Resume {
-  id: number
-  content: string
-  enhanced_content: string
+interface FeedbackItem {
+  id: string
+  resume_id: string
+  resume_filename: string
+  feedback_text: string
   score: number
-  feedback: string
-  learning_plan: {
-    resources: string[]
-    timeline: string
-    focus_areas: string[]
-  }
-  job_description: string
+  ai_analysis_version: string
   created_at: string
+  resume_created_at: string
 }
 
-export default function HistoryPage() {
+interface PaginationInfo {
+  current_page: number
+  total_pages: number
+  total_items: number
+  items_per_page: number
+  has_next: boolean
+  has_prev: boolean
+}
+
+interface FeedbackHistoryResponse {
+  feedback_history: FeedbackItem[]
+  pagination: PaginationInfo
+}
+
+export default function FeedbackHistoryPage() {
   const { user } = useAuth()
-  const [resumes, setResumes] = useState<Resume[]>([])
+  const [feedbackHistory, setFeedbackHistory] = useState<FeedbackItem[]>([])
+  const [pagination, setPagination] = useState<PaginationInfo | null>(null)
   const [loading, setLoading] = useState(true)
-  const [selectedResume, setSelectedResume] = useState<Resume | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null)
 
   useEffect(() => {
-    fetchResumes()
-  }, [])
+    fetchFeedbackHistory(currentPage)
+  }, [currentPage])
 
-  const fetchResumes = async () => {
+  const fetchFeedbackHistory = async (page: number) => {
     try {
-      const response = await fetch('/api/resume/history')
+      setLoading(true)
+      const response = await fetch(`/api/resume/history?page=${page}&limit=10`)
       if (!response.ok) {
-        throw new Error('Failed to fetch resumes')
+        throw new Error('Failed to fetch feedback history')
       }
-      const data = await response.json()
-      setResumes(data)
+      const data: FeedbackHistoryResponse = await response.json()
+      setFeedbackHistory(data.feedback_history)
+      setPagination(data.pagination)
     } catch (error) {
-      toast.error('Failed to fetch resume history')
-      console.error('History error:', error)
+      toast.error('Failed to fetch feedback history')
+      console.error('Feedback history error:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && pagination && newPage <= pagination.total_pages) {
+      setCurrentPage(newPage)
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-green-600'
+    if (score >= 60) return 'text-yellow-600'
+    return 'text-red-600'
+  }
+
+  const getScoreBadge = (score: number) => {
+    if (score >= 80) return 'bg-green-100 text-green-800'
+    if (score >= 60) return 'bg-yellow-100 text-yellow-800'
+    return 'bg-red-100 text-red-800'
+  }
+
+  const parseFeedback = (feedbackText: string) => {
+    try {
+      return JSON.parse(feedbackText)
+    } catch {
+      return { general: { comments: feedbackText, score: 0, suggestions: [] } }
+    }
+  }
+
+  const downloadReport = async (resumeId: string) => {
+    try {
+      const response = await fetch(`/api/resume/download/${resumeId}?format=pdf`)
+      if (!response.ok) {
+        throw new Error('Download failed')
+      }
+      
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `resume_analysis_${resumeId.slice(0, 8)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      
+      toast.success('Report downloaded successfully')
+    } catch (error) {
+      toast.error('Failed to download report')
+      console.error('Download error:', error)
     }
   }
 
@@ -63,115 +137,188 @@ export default function HistoryPage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold mb-2">Resume History</h1>
+          <h1 className="text-3xl font-bold mb-2">Resume Feedback History</h1>
           <p className="text-muted-foreground">
-            View and manage your past resumes and their analysis
+            View all your resume analysis results and feedback
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Left Column - Resume List */}
-          <div className="space-y-4">
-            {resumes.length === 0 ? (
+        <div className="grid lg:grid-cols-3 gap-8">
+          {/* Left Column - Feedback List */}
+          <div className="lg:col-span-1 space-y-4">
+            {feedbackHistory.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">No resumes found</p>
+                <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">No feedback history found</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Analyze a resume to see feedback here
+                </p>
               </div>
             ) : (
-              resumes.map((resume) => (
-                <motion.div
-                  key={resume.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className={`p-4 rounded-lg cursor-pointer transition-colors ${
-                    selectedResume?.id === resume.id
-                      ? 'bg-primary text-white'
-                      : 'bg-card hover:bg-accent'
-                  }`}
-                  onClick={() => setSelectedResume(resume)}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-semibold">
-                        Resume {resume.id}
-                      </p>
-                      <p className="text-sm opacity-80">
-                        {new Date(resume.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    {resume.score && (
-                      <div className="text-right">
-                        <p className="font-bold">Score</p>
-                        <p className="text-2xl">{resume.score}/10</p>
+              <>
+                {feedbackHistory.map((feedback) => (
+                  <motion.div
+                    key={feedback.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={`p-4 rounded-lg cursor-pointer transition-all border ${
+                      selectedFeedback?.id === feedback.id
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-card hover:bg-accent border-border'
+                    }`}
+                    onClick={() => setSelectedFeedback(feedback)}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold truncate">
+                            {feedback.resume_filename || `Resume ${feedback.resume_id.slice(0, 8)}`}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getScoreBadge(feedback.score)}`}>
+                              <Star className="w-3 h-3 mr-1" />
+                              {feedback.score}/100
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    )}
+
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <Calendar className="w-4 h-4 mr-1" />
+                        {formatDate(feedback.created_at)}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs bg-muted px-2 py-1 rounded">
+                          {feedback.ai_analysis_version}
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            downloadReport(feedback.resume_id)
+                          }}
+                          className="p-1 rounded hover:bg-muted transition-colors"
+                          title="Download PDF Report"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+
+                {/* Pagination */}
+                {pagination && pagination.total_pages > 1 && (
+                  <div className="flex items-center justify-between mt-6 p-4 bg-card rounded-lg border">
+                    <div className="text-sm text-muted-foreground">
+                      Showing {((pagination.current_page - 1) * pagination.items_per_page) + 1}-{Math.min(pagination.current_page * pagination.items_per_page, pagination.total_items)} of {pagination.total_items} results
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={!pagination.has_prev}
+                        className="p-2 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <span className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm">
+                        {pagination.current_page}
+                      </span>
+                      <span className="text-muted-foreground">of {pagination.total_pages}</span>
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={!pagination.has_next}
+                        className="p-2 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </motion.div>
-              ))
+                )}
+              </>
             )}
           </div>
 
-          {/* Right Column - Resume Details */}
-          <div>
-            {selectedResume ? (
-              <div className="space-y-6">
-                <div className="bg-card p-6 rounded-lg border">
-                  <h2 className="text-xl font-semibold mb-4">Resume Analysis</h2>
-                  <div className="space-y-4">
+          {/* Right Column - Feedback Details */}
+          <div className="lg:col-span-2">
+            {selectedFeedback ? (
+              <motion.div
+                key={selectedFeedback.id}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-card rounded-lg border p-6"
+              >
+                <div className="space-y-6">
+                  <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium mb-2">Score</h3>
-                      <div className="flex items-center">
-                        <div className="text-4xl font-bold text-primary">
-                          {selectedResume.score}
-                        </div>
-                        <div className="ml-4 text-muted-foreground">/ 10</div>
-                      </div>
-                    </div>
-                    <div>
-                      <h3 className="font-medium mb-2">Feedback</h3>
+                      <h2 className="text-xl font-semibold mb-1">
+                        {selectedFeedback.resume_filename || `Resume ${selectedFeedback.resume_id.slice(0, 8)}`}
+                      </h2>
                       <p className="text-muted-foreground">
-                        {selectedResume.feedback}
+                        Analyzed on {formatDate(selectedFeedback.created_at)}
                       </p>
                     </div>
-                    <div>
-                      <h3 className="font-medium mb-2">Learning Plan</h3>
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="font-medium text-sm mb-1">Resources</h4>
-                          <ul className="list-disc list-inside text-sm text-muted-foreground">
-                            {selectedResume.learning_plan.resources.map(
-                              (resource, index) => (
-                                <li key={index}>{resource}</li>
-                              )
-                            )}
-                          </ul>
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-sm mb-1">Timeline</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {selectedResume.learning_plan.timeline}
-                          </p>
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-sm mb-1">Focus Areas</h4>
-                          <ul className="list-disc list-inside text-sm text-muted-foreground">
-                            {selectedResume.learning_plan.focus_areas.map(
-                              (area, index) => (
-                                <li key={index}>{area}</li>
-                              )
-                            )}
-                          </ul>
-                        </div>
+                    <div className="text-right">
+                      <div className={`text-2xl font-bold ${getScoreColor(selectedFeedback.score)}`}>
+                        {selectedFeedback.score}/100
                       </div>
+                      <p className="text-sm text-muted-foreground">Overall Score</p>
                     </div>
                   </div>
-                </div>
 
-                <ResumeSnapshot content={selectedResume.enhanced_content} />
-              </div>
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold">Detailed Feedback</h3>
+                    {(() => {
+                      const feedback = parseFeedback(selectedFeedback.feedback_text)
+                      return (
+                        <div className="space-y-4">
+                          {Object.entries(feedback).map(([category, details]: [string, any]) => (
+                            <div key={category} className="bg-muted/30 rounded-lg p-4">
+                              <h4 className="font-semibold capitalize mb-2 flex items-center gap-2">
+                                <Target className="w-4 h-4" />
+                                {category.replace('_', ' ')}
+                                {details.score && (
+                                  <span className={`ml-auto ${getScoreColor(details.score)}`}>
+                                    {details.score}/100
+                                  </span>
+                                )}
+                              </h4>
+                              {details.comments && (
+                                <p className="text-muted-foreground mb-3">{details.comments}</p>
+                              )}
+                              {details.suggestions && details.suggestions.length > 0 && (
+                                <div>
+                                  <p className="font-medium text-sm mb-2">Suggestions:</p>
+                                  <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                                    {details.suggestions.map((suggestion: string, idx: number) => (
+                                      <li key={idx}>{suggestion}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                  </div>
+
+                  <div className="flex gap-3 pt-4 border-t">
+                    <button
+                      onClick={() => downloadReport(selectedFeedback.resume_id)}
+                      className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download PDF Report
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
             ) : (
-              <div className="text-center py-12">
+              <div className="bg-card rounded-lg border p-8 text-center">
+                <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">
-                  Select a resume to view details
+                  Select a feedback item from the list to view details
                 </p>
               </div>
             )}

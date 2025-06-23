@@ -22,17 +22,25 @@ export default function SignUpPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match')
+      return
+    }
+
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters')
       return
     }
 
     try {
       setLoading(true)
       await signup(formData.email, formData.password, formData.full_name)
+      toast.success('Account created successfully!')
       router.push('/dashboard')
     } catch (error: any) {
-      toast.error(error.message)
+      console.error('Signup error:', error)
+      toast.error(error.message || 'Failed to create account')
     } finally {
       setLoading(false)
     }

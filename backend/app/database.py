@@ -9,6 +9,10 @@ load_dotenv('env')
 
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
+# Update URL to use psycopg instead of psycopg2
+if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgresql://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+psycopg://")
+
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

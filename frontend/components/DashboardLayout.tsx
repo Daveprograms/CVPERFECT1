@@ -38,7 +38,8 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/check')
+        // The middleware already handles auth, but we can double-check here
+        const response = await fetch('/api/auth/me')
         if (!response.ok) {
           router.push('/auth/signin')
           return
@@ -74,14 +75,14 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('/api/auth/logout', {
+      await fetch('/api/auth/logout', {
         method: 'POST',
       })
-      if (response.ok) {
-        router.push('/auth/signin')
-      }
+      router.push('/auth/signin')
     } catch (error) {
       console.error('Logout failed:', error)
+      // Still redirect even if logout API fails
+      router.push('/auth/signin')
     }
   }
 
@@ -90,6 +91,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       title: 'Dashboard',
       icon: Home,
       link: '/dashboard'
+    },
+    {
+      title: '🚀 Job Assistant',
+      icon: Brain,
+      link: '/job-assistant'
     },
     {
       title: 'Resume Analysis',

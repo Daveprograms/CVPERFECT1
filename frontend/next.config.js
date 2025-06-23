@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  env: {
+    BACKEND_URL: 'http://localhost:8000',
+    NEXT_PUBLIC_BACKEND_URL: 'http://localhost:8000'
+  },
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {

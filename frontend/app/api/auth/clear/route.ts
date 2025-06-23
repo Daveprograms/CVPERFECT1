@@ -5,7 +5,7 @@ export async function POST() {
   try {
     const cookieStore = cookies()
     
-    // Clear the auth token cookie
+    // Clear all auth-related cookies
     cookieStore.set('auth_token', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -14,15 +14,15 @@ export async function POST() {
       path: '/'
     })
 
-    console.log('✅ User logged out successfully')
+    console.log('🧹 Auth state cleared')
 
     return NextResponse.json({ 
-      message: 'Logged out successfully' 
+      message: 'Auth state cleared successfully' 
     })
   } catch (error) {
-    console.error('❌ Logout failed:', error)
+    console.error('❌ Clear auth failed:', error)
     return new NextResponse(
-      JSON.stringify({ message: 'Logout failed' }),
+      JSON.stringify({ message: 'Failed to clear auth state' }),
       { status: 500 }
     )
   }

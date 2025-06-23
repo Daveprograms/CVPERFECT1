@@ -16,6 +16,7 @@ class ActionType(str, enum.Enum):
     RESUME_ENHANCE = "resume_enhance"
     COVER_LETTER_GENERATION = "cover_letter_generation"
     LEARNING_PATH_GENERATION = "learning_path_generation"
+    PRACTICE_EXAM_GENERATION = "practice_exam_generation"
     LINKEDIN_PROFILE_EXTRACTION = "linkedin_profile_extraction"
     JOB_MATCH = "job_match"
     RESUME_DOWNLOAD = "resume_download"

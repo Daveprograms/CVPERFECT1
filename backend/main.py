@@ -6,10 +6,9 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import os
 import stripe
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import text
 from app.routers import auth, resume, stripe
-from app.database import engine, Base, init_db, SessionLocal
+from app.database import engine, Base, init_db, SessionLocal, get_db
 
 # Load environment variables
 load_dotenv('env')
@@ -19,12 +18,6 @@ stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
 # Initialize Google Gemini
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-
-# Database setup
-SQLALCHEMY_DATABASE_URL = os.getenv('DATABASE_URL')
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -91,14 +84,6 @@ async def http_exception_handler(request, exc):
         status_code=exc.status_code,
         content={"detail": exc.detail},
     )
-
-# Dependency to get database session
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 if __name__ == "__main__":
     import uvicorn

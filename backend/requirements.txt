@@ -13,4 +13,5 @@ python-magic==0.4.27
 aiofiles==23.2.1
 pytest==7.4.3
 httpx==0.25.1
-alembic==1.12.1 
+alembic==1.12.1
+reportlab==4.0.6 

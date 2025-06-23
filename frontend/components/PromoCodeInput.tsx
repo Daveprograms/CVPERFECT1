@@ -15,7 +15,7 @@ export function PromoCodeInput() {
 
     setLoading(true)
     try {
-      const response = await fetch('/api/promo/validate', {
+      const response = await fetch('/api/validate-developer-code', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -25,15 +25,23 @@ export function PromoCodeInput() {
 
       const data = await response.json()
 
-      if (response.ok) {
-        toast.success('Promo code applied successfully!')
-        // Redirect to dashboard or refresh user data
-        window.location.href = '/dashboard'
+      if (response.ok && data.success) {
+        toast.success(data.message || 'Developer code activated successfully!')
+        
+        // If user needs to sign in, redirect to signin page
+        if (data.requiresSignIn) {
+          setTimeout(() => {
+            window.location.href = '/auth/signin'
+          }, 2000)
+        } else {
+          // Refresh the page to show updated subscription status
+          window.location.reload()
+        }
       } else {
-        toast.error(data.message || 'Invalid promo code')
+        toast.error(data.message || 'Invalid developer code')
       }
     } catch (error) {
-      toast.error('Failed to validate promo code')
+      toast.error('Failed to validate developer code')
     } finally {
       setLoading(false)
     }
@@ -43,7 +51,7 @@ export function PromoCodeInput() {
     <form onSubmit={handleSubmit} className="flex gap-2">
       <Input
         type="text"
-        placeholder="Enter promo code"
+        placeholder="Enter developer code"
         value={code}
         onChange={(e) => setCode(e.target.value)}
         className="max-w-[200px]"

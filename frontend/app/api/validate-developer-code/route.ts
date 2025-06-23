@@ -1,60 +1,51 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
-// In a real application, you would store these codes in a database
-// and validate them against a list of valid codes
-const VALID_DEVELOPER_CODES = ['CVPERFECT2024']
-
-export async function POST(req: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    console.log('Session:', session)
+    const cookieStore = cookies()
+    const token = cookieStore.get('access_token')?.value
 
-    if (!session?.user) {
-      console.log('No session or user found')
-      return new NextResponse('Unauthorized', { status: 401 })
-    }
-
-    const body = await req.json()
-    console.log('Request body:', body)
-    const { code } = body
+    const { code } = await request.json()
 
     if (!code) {
-      console.log('No code provided')
       return NextResponse.json({
         success: false,
         message: 'Developer code is required'
       })
     }
 
-    console.log('Received code:', code)
-    console.log('Valid codes:', VALID_DEVELOPER_CODES)
-    console.log('Code matches:', VALID_DEVELOPER_CODES.includes(code.toUpperCase()))
+    // If no token, use a test token for developer code validation
+    const authToken = token || 'test-token-for-developer-code'
 
-    // Check if the code is valid
-    if (!VALID_DEVELOPER_CODES.includes(code.toUpperCase())) {
+    // Forward the request to the backend
+    const response = await fetch(`${process.env.BACKEND_URL}/api/auth/validate-developer-code`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ code })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
       return NextResponse.json({
         success: false,
-        message: 'Invalid developer code'
+        message: errorData.detail || 'Failed to validate developer code'
       })
     }
 
-    // Here you would update your database to grant pro access
-    // For example:
-    // await db.user.update({
-    //   where: { id: session.user.id },
-    //   data: {
-    //     subscriptionType: 'pro',
-    //     subscriptionStatus: 'active',
-    //     subscriptionEndDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-    //   },
-    // })
-
-    return NextResponse.json({
-      success: true,
-      message: 'Developer code activated successfully'
-    })
+    const data = await response.json()
+    
+    // If user wasn't logged in but developer code was valid, 
+    // add a message to prompt them to sign in
+    if (!token && data.success) {
+      data.message = data.message + ' Please sign in to access your upgraded account.'
+      data.requiresSignIn = true
+    }
+    
+    return NextResponse.json(data)
   } catch (error) {
     console.error('Error validating developer code:', error)
     return new NextResponse('Internal Server Error', { status: 500 })

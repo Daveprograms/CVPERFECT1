@@ -1,35 +1,35 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
-export async function GET() {
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000'
+
+export async function GET(request: NextRequest) {
   try {
-    const cookieStore = cookies()
-    const token = cookieStore.get('auth_token')?.value
+    const { searchParams } = new URL(request.url)
+    const page = searchParams.get('page') || '1'
+    const limit = searchParams.get('limit') || '10'
+    
+    const token = request.cookies.get('access_token')?.value
 
     if (!token) {
-      return new NextResponse(JSON.stringify({ detail: 'Unauthorized' }), {
-        status: 401,
-        headers: { 'Content-Type': 'application/json' }
-      })
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    const response = await fetch(`${process.env.BACKEND_URL}/api/resume/history`, {
+    const response = await fetch(`${BACKEND_URL}/resumes/feedback-history?page=${page}&limit=${limit}`, {
       headers: {
-        Authorization: `Bearer ${token}`
-      }
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     })
 
     if (!response.ok) {
-      throw new Error('Failed to fetch resume history')
+      throw new Error(`Backend responded with ${response.status}`)
     }
 
     const data = await response.json()
     return NextResponse.json(data)
-  } catch (error: any) {
-    console.error('Resume history error:', error)
-    return new NextResponse(JSON.stringify({ detail: error.message || 'Failed to fetch resume history' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
+  } catch (error) {
+    console.error('Error fetching feedback history:', error)
+    return NextResponse.json({ error: 'Failed to fetch feedback history' }, { status: 500 })
   }
 } 

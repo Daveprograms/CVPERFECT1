@@ -9,6 +9,45 @@ import { PromoCodeInput } from '@/components/PromoCodeInput'
 
 export default function BillingPage() {
   const [selectedPlan, setSelectedPlan] = useState('basic')
+  const [currentPlan, setCurrentPlan] = useState('free')
+  const [upgrading, setUpgrading] = useState(false)
+
+  const handleUpgrade = async (planId: string) => {
+    if (planId === currentPlan || upgrading) return
+    
+    setUpgrading(true)
+    try {
+      // Create Stripe checkout session
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 
+          plan_id: `${planId}_monthly` 
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Redirect to Stripe checkout
+        if (data.checkout_url) {
+          window.location.href = data.checkout_url
+        } else {
+          throw new Error('No checkout URL received')
+        }
+      } else {
+        const error = await response.json()
+        alert(`Failed to create checkout session: ${error.detail || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Checkout error:', error)
+      alert('Failed to start checkout process')
+    } finally {
+      setUpgrading(false)
+    }
+  }
 
   const plans = [
     {
@@ -18,6 +57,7 @@ export default function BillingPage() {
       price: 0,
       features: [
         'Access to resume editor',
+        '1 resume upload',
         '1 AI resume scan per week',
         'Basic PDF export'
       ]
@@ -28,6 +68,8 @@ export default function BillingPage() {
       description: 'For active job seekers',
       price: 9.99,
       features: [
+        'Everything in Free',
+        'Up to 10 resume uploads',
         'Unlimited AI feedback',
         'Resume versioning',
         'Export in PDF and DOCX',
@@ -40,9 +82,10 @@ export default function BillingPage() {
       description: 'For serious job seekers',
       price: 19.99,
       features: [
-        'Includes everything in Basic',
+        'Everything in Basic',
+        'Up to 25 resume uploads',
         'LinkedIn optimization',
-        'Personalized job match scores',
+        'Auto-Apply to Jobs (Coming Soon)',
         'Premium AI chat assistant access',
         'Save multiple resume versions by job title'
       ]
@@ -53,7 +96,8 @@ export default function BillingPage() {
       description: 'For businesses and developers',
       price: 49.99,
       features: [
-        'Includes everything in Pro',
+        'Everything in Professional',
+        'Up to 50 resume uploads',
         'Auto-Apply via Swipe',
         'Priority AI processing',
         'Learning plan generation',
@@ -82,6 +126,8 @@ export default function BillingPage() {
   return (
     <DashboardLayout>
       <div className="container mx-auto px-4 py-8">
+
+
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold mb-4">Billing & Subscription</h1>
           <p className="text-xl text-muted-foreground">
@@ -148,7 +194,7 @@ export default function BillingPage() {
         >
           <h3 className="text-lg font-semibold mb-2">Have a Developer Code?</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Enter your developer code to unlock Pro features with a 3-resume limit.
+            Enter your developer code to unlock PROFESSIONAL features with 25 resume uploads.
           </p>
           <PromoCodeInput />
         </motion.div>
@@ -187,15 +233,16 @@ export default function BillingPage() {
                   </CardContent>
                   <CardFooter>
                     <button
-                      onClick={() => setSelectedPlan(plan.id)}
+                      onClick={() => handleUpgrade(plan.id)}
                       className={`w-full py-2 rounded-lg transition-colors ${
-                        selectedPlan === plan.id
-                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                          : 'border border-input bg-background hover:bg-accent hover:text-accent-foreground'
+                        currentPlan === plan.id
+                          ? 'bg-gray-400 text-white cursor-not-allowed'
+                          : 'bg-primary text-primary-foreground hover:bg-primary/90'
                       }`}
-                    >
-                      {selectedPlan === plan.id ? 'Current Plan' : 'Upgrade'}
-                    </button>
+                      disabled={currentPlan === plan.id || upgrading}
+                                          >
+                        {currentPlan === plan.id ? 'Current Plan' : upgrading ? 'Processing...' : 'Upgrade Now'}
+                      </button>
                   </CardFooter>
                 </Card>
               </motion.div>

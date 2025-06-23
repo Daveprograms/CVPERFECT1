@@ -66,6 +66,10 @@ export default function PricingPage() {
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
+                    1 resume upload
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
                     1 AI resume scan per week
                   </li>
                   <li className="flex items-center">
@@ -98,6 +102,14 @@ export default function PricingPage() {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Everything in Free
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Up to 10 resume uploads
+                  </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
                     Unlimited AI feedback
@@ -142,7 +154,11 @@ export default function PricingPage() {
                 <ul className="space-y-2">
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Includes everything in Basic
+                    Everything in Basic
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Up to 25 resume uploads
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
@@ -150,7 +166,7 @@ export default function PricingPage() {
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Personalized job match scores
+                    Auto-Apply to Jobs (Coming Soon)
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
@@ -178,7 +194,7 @@ export default function PricingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
           >
-            <Card className="h-full border-primary">
+            <Card className="h-full">
               <CardHeader>
                 <CardTitle>Enterprise</CardTitle>
                 <CardDescription>For businesses and developers</CardDescription>
@@ -188,7 +204,11 @@ export default function PricingPage() {
                 <ul className="space-y-2">
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Includes everything in Pro
+                    Everything in Professional
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Up to 50 resume uploads
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
