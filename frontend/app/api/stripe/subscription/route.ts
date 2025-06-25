@@ -1,67 +1,25 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return new NextResponse('Unauthorized', { status: 401 })
-    }
-
-    const response = await fetch(
-      `${process.env.BACKEND_URL}/api/stripe/subscription`,
-      {
-        headers: {
-          Authorization: `Bearer ${(session as any)?.accessToken || 'placeholder'}`
-        }
-      }
-    )
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch subscription')
-    }
-
-    const data = await response.json()
-    return NextResponse.json(data)
+    // Stripe subscription check disabled for now - using custom auth system
+    return NextResponse.json({ 
+      subscription: { status: 'active', tier: 'free' }
+    })
   } catch (error: any) {
-    console.error('Subscription error:', error)
-    return new NextResponse(error.message, { status: 500 })
+    console.error('Stripe subscription error:', error)
+    return NextResponse.json({ error: 'Failed to get subscription' }, { status: 500 })
   }
 }
 
-export async function POST(req: Request) {
+export async function POST() {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return new NextResponse('Unauthorized', { status: 401 })
-    }
-
-    const { action } = await req.json()
-    if (!action) {
-      return new NextResponse('Action is required', { status: 400 })
-    }
-
-    const response = await fetch(
-      `${process.env.BACKEND_URL}/api/stripe/subscription`,
-      {
-        method: 'POST',
-              headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${(session as any)?.accessToken || 'placeholder'}`
-      },
-        body: JSON.stringify({ action })
-      }
-    )
-
-    if (!response.ok) {
-      throw new Error('Failed to update subscription')
-    }
-
-    const data = await response.json()
-    return NextResponse.json(data)
+    // Stripe subscription creation disabled for now
+    return NextResponse.json({ 
+      error: 'Stripe integration temporarily disabled'
+    }, { status: 503 })
   } catch (error: any) {
-    console.error('Subscription update error:', error)
-    return new NextResponse(error.message, { status: 500 })
+    console.error('Stripe subscription creation error:', error)
+    return NextResponse.json({ error: 'Failed to create subscription' }, { status: 500 })
   }
 } 

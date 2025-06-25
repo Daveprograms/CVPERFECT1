@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
+    // Get auth token from request headers
+    const authHeader = req.headers.get('authorization') || ''
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${(session as any)?.accessToken || 'placeholder'}`
+        'Authorization': authHeader
       },
       body: JSON.stringify({ message })
     })
