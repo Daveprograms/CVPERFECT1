@@ -115,30 +115,7 @@ async def generate_cover_letter(
         print(f"Error generating cover letter: {e}")
         raise
 
-async def analyze_linkedin_profile(profile_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Analyze LinkedIn profile data and provide insights."""
-    prompt = f"""
-    You are an expert career coach. Analyze the following LinkedIn profile data and provide insights.
-    
-    Profile Data:
-    {json.dumps(profile_data, indent=2)}
-    
-    Please provide:
-    1. Key strengths
-    2. Areas for improvement
-    3. Skill gaps compared to industry standards
-    4. Career path suggestions
-    5. Networking recommendations
-    
-    Return the response in JSON format.
-    """
 
-    try:
-        response = await model.generate_content(prompt)
-        return json.loads(response.text)
-    except Exception as e:
-        print(f"Error analyzing LinkedIn profile: {e}")
-        raise
 
 async def generate_resume_snapshot(
     resume_content: str,

@@ -9,17 +9,18 @@ export async function POST() {
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
-    const response = await fetch(`${process.env.BACKEND_URL}/api/auth/signout`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.accessToken}`
-      }
-    })
+    // For now, we'll just handle logout on frontend
+    // const response = await fetch(`${process.env.BACKEND_URL}/api/auth/signout`, {
+    //   method: 'POST',
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //     Authorization: `Bearer ${session.user?.id || 'placeholder'}`
+    //   }
+    // })
 
-    if (!response.ok) {
-      throw new Error('Failed to sign out')
-    }
+    // if (!response.ok) {
+    //   throw new Error('Failed to sign out')
+    // }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {

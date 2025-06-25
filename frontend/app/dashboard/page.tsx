@@ -6,7 +6,7 @@ import {
   FileText,
   Brain,
   Briefcase,
-  Linkedin,
+
   BarChart,
   CreditCard,
   Settings,
@@ -70,6 +70,48 @@ export default function DashboardPage() {
           <p className="text-gray-600 dark:text-gray-300">
             Your resume is ready for optimization. Here's what's new:
           </p>
+        </div>
+
+        {/* Featured Action - Analyze Resume */}
+        <div className="bg-gradient-to-r from-primary/10 to-purple-500/10 rounded-lg p-8 shadow-sm border border-primary/20">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center space-x-3 mb-4">
+                <div className="p-3 bg-primary/20 rounded-xl">
+                  <Brain className="w-8 h-8 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">🚀 AI Resume Analysis</h2>
+                  <p className="text-gray-600 dark:text-gray-300">
+                    Get instant feedback and improve your resume with AI-powered insights
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300 mb-4">
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>Instant scoring</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span>Detailed feedback</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <span>Job matching</span>
+                </div>
+              </div>
+            </div>
+            <div className="ml-6">
+              <Link
+                href="/job-assistant"
+                className="inline-flex items-center justify-center rounded-lg bg-primary px-8 py-4 text-lg font-semibold text-white shadow-lg hover:bg-primary/90 transition-all duration-200 transform hover:scale-105"
+              >
+                <Brain className="w-5 h-5 mr-2" />
+                Analyze Now
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Quick Actions Grid */}

@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
-import { useAuth } from './auth-provider'
+import { useAuth } from '@/lib/context/AuthContext'
 import html2canvas from 'html2canvas'
 
 interface ResumeSnapshotProps {
@@ -28,7 +28,7 @@ export default function ResumeSnapshot({ resumeId, content }: ResumeSnapshotProp
         { content },
         {
           headers: {
-            Authorization: `Bearer ${await user?.getIdToken()}`
+            Authorization: `Bearer ${(user as any)?.uid || 'placeholder'}`
           }
         }
       )
@@ -71,7 +71,7 @@ export default function ResumeSnapshot({ resumeId, content }: ResumeSnapshotProp
         { resume_id: resumeId },
         {
           headers: {
-            Authorization: `Bearer ${await user?.getIdToken()}`
+            Authorization: `Bearer ${(user as any)?.uid || 'placeholder'}`
           }
         }
       )

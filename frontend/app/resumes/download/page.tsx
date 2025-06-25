@@ -13,7 +13,7 @@ interface Resume {
   created_at: string
   updated_at: string
   job_description: string
-  linkedin_url: string
+
 }
 
 export default function DownloadResumePage() {

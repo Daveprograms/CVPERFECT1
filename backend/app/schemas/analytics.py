@@ -9,7 +9,7 @@ class ActionType(str, Enum):
     RESUME_DOWNLOAD = "resume_download"
     RESUME_DELETE = "resume_delete"
     COVER_LETTER_GENERATE = "cover_letter_generate"
-    LINKEDIN_OPTIMIZE = "linkedin_optimize"
+
     SUBSCRIPTION_CHANGE = "subscription_change"
 
 class ActivityItem(BaseModel):

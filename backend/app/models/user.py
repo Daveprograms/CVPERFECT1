@@ -72,7 +72,6 @@ class User(Base):
                 "pdf_export": True,
                 "docx_export": False,
                 "resume_templates": 0,
-                "linkedin_optimization": False,
                 "job_matching": False,
                 "premium_chat": False,
                 "versioning": False,
@@ -88,7 +87,6 @@ class User(Base):
                 "pdf_export": True,
                 "docx_export": True,
                 "resume_templates": 10,
-                "linkedin_optimization": False,
                 "job_matching": False,
                 "premium_chat": False,
                 "versioning": True,
@@ -104,7 +102,6 @@ class User(Base):
                 "pdf_export": True,
                 "docx_export": True,
                 "resume_templates": -1,  # All templates
-                "linkedin_optimization": True,
                 "job_matching": True,
                 "premium_chat": True,
                 "versioning": True,
@@ -120,7 +117,6 @@ class User(Base):
                 "pdf_export": True,
                 "docx_export": True,
                 "resume_templates": -1,  # All templates
-                "linkedin_optimization": True,
                 "job_matching": True,
                 "premium_chat": True,
                 "versioning": True,

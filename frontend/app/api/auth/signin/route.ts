@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     
     console.log('✅ Test signin successful:', { email, testToken })
 
-    // Set the test auth token cookie
+    // Set the test auth token cookie (for server-side routes)
     const cookieStore = cookies()
     cookieStore.set('auth_token', testToken, {
       httpOnly: true,
@@ -29,10 +29,11 @@ export async function POST(request: Request) {
       maxAge: 60 * 60 * 24 * 7, // 1 week
     })
 
-    // Return success response with redirect URL
+    // Return success response with token for client-side storage
     return new NextResponse(
       JSON.stringify({ 
         redirectUrl: '/dashboard',
+        token: testToken, // Include token in response for localStorage
         user: {
           id: '1',
           email: email,

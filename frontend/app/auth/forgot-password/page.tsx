@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '@/components/auth-provider'
+import { useAuth } from '@/lib/context/AuthContext'
 import { toast } from 'react-hot-toast'
 
 export default function ForgotPasswordPage() {

@@ -49,7 +49,7 @@ interface LearningPlan {
     topic: string;
     description: string;
     importance: string;
-    study_resources: string[];
+    study_resources?: string[];
   }[];
   leetcode_practice: {
     problem: string;
@@ -91,6 +91,8 @@ interface PracticeExam {
   study_tips: string[];
 }
 
+import { getAuthToken, getAuthHeaders, isAuthenticated } from '@/lib/auth'
+
 export default function JobAssistantPage() {
   const { user } = useAuth()
   
@@ -122,7 +124,7 @@ export default function JobAssistantPage() {
   const [showExamAnswers, setShowExamAnswers] = useState(false)
 
   const steps = [
-    { id: 1, title: 'Upload & Analyze', icon: FileUp, description: 'Upload resume and job description' },
+    { id: 1, title: 'AI Resume Analysis', icon: FileUp, description: 'Upload resume & get detailed AI feedback' },
     { id: 2, title: 'Cover Letter', icon: FileText, description: 'Generate tailored cover letter' },
     { id: 3, title: 'Learning Plan', icon: BookOpen, description: 'Get personalized study plan' },
     { id: 4, title: 'Practice Exam', icon: ClipboardList, description: 'Take custom practice test' }
@@ -231,9 +233,21 @@ export default function JobAssistantPage() {
     setError(null)
 
     try {
+      // Check if user is authenticated
+      if (!isAuthenticated()) {
+        throw new Error('No authentication token found. Please log in again.')
+      }
+      
+      const authToken = getAuthToken()
+      console.log('🔐 Auth token debug:', { 
+        token: authToken ? `${authToken.substring(0, 20)}...` : 'NO_TOKEN',
+        length: authToken?.length || 0,
+        isAuthenticated: isAuthenticated()
+      })
+      
       const response = await fetch(`/api/resume/cover-letter/${resumeId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ job_description: jobDescription })
       })
 
@@ -261,9 +275,13 @@ export default function JobAssistantPage() {
     setError(null)
 
     try {
+      if (!isAuthenticated()) {
+        throw new Error('No authentication token found. Please log in again.')
+      }
+      
       const response = await fetch(`/api/resume/learning-path/${resumeId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ job_description: jobDescription })
       })
 
@@ -291,9 +309,13 @@ export default function JobAssistantPage() {
     setError(null)
 
     try {
+      if (!isAuthenticated()) {
+        throw new Error('No authentication token found. Please log in again.')
+      }
+      
       const response = await fetch(`/api/resume/practice-exam/${resumeId}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ job_description: jobDescription })
       })
 
@@ -329,9 +351,9 @@ export default function JobAssistantPage() {
   const renderStep1 = () => (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2">Upload Resume & Job Description</h2>
+        <h2 className="text-2xl font-bold mb-2">🤖 AI Resume Analysis</h2>
         <p className="text-gray-600 dark:text-gray-300">
-          Start by uploading your resume and pasting the job description you're targeting
+          Upload your resume and job description to get instant AI-powered feedback, scoring, and improvement suggestions
         </p>
       </div>
 
@@ -382,10 +404,23 @@ export default function JobAssistantPage() {
         </div>
       )}
 
+      {/* Requirements checklist */}
+      <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <h4 className="font-medium text-blue-800 dark:text-blue-200 mb-2">Ready to analyze? Make sure you have:</h4>
+        <div className="space-y-1 text-sm">
+          <div className={`flex items-center space-x-2 ${file ? 'text-green-600' : 'text-gray-500 dark:text-gray-400'}`}>
+            {file ? '✅' : '⬜'} Resume file uploaded
+          </div>
+          <div className={`flex items-center space-x-2 ${jobDescription.trim() ? 'text-green-600' : 'text-gray-500 dark:text-gray-400'}`}>
+            {jobDescription.trim() ? '✅' : '⬜'} Job description entered
+          </div>
+        </div>
+      </div>
+
       <button
         onClick={handleStep1Submit}
         disabled={!file || !jobDescription.trim() || isUploading || isAnalyzing}
-        className="w-full bg-primary text-white py-3 px-6 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+        className="w-full btn-primary-fallback py-3 px-6 rounded-lg font-medium flex items-center justify-center space-x-2"
       >
         {isUploading || isAnalyzing ? (
           <>
@@ -504,7 +539,7 @@ export default function JobAssistantPage() {
             <button
               onClick={handleStep2Submit}
               disabled={isGeneratingCoverLetter}
-              className="bg-primary text-white py-2 px-6 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
+              className="bg-primary text-white py-2 px-6 rounded-lg font-medium disabled:bg-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto transition-all duration-200 hover:bg-primary/90"
             >
               {isGeneratingCoverLetter ? (
                 <>
@@ -564,7 +599,7 @@ export default function JobAssistantPage() {
           <button
             onClick={handleStep3Submit}
             disabled={isGeneratingLearningPlan}
-            className="bg-primary text-white py-3 px-6 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
+            className="bg-primary text-white py-3 px-6 rounded-lg font-medium disabled:bg-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto transition-all duration-200 hover:bg-primary/90"
           >
             {isGeneratingLearningPlan ? (
               <>
@@ -596,9 +631,13 @@ export default function JobAssistantPage() {
                   <div>
                     <span className="font-medium text-sm">Study Resources:</span>
                     <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-300 mt-1">
-                      {topic.study_resources.map((resource, idx) => (
-                        <li key={idx}>{resource}</li>
-                      ))}
+                      {topic.study_resources && topic.study_resources.length > 0 ? (
+                        topic.study_resources.map((resource, idx) => (
+                          <li key={idx}>{resource}</li>
+                        ))
+                      ) : (
+                        <li>No specific resources provided</li>
+                      )}
                     </ul>
                   </div>
                 </div>
@@ -726,7 +765,7 @@ export default function JobAssistantPage() {
           <button
             onClick={handleStep4Submit}
             disabled={isGeneratingExam}
-            className="bg-primary text-white py-3 px-6 rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
+            className="bg-primary text-white py-3 px-6 rounded-lg font-medium disabled:bg-gray-400 disabled:text-gray-600 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto transition-all duration-200 hover:bg-primary/90"
           >
             {isGeneratingExam ? (
               <>
@@ -907,9 +946,9 @@ export default function JobAssistantPage() {
       <div className="max-w-4xl mx-auto p-6">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">🚀 Job Application Assistant</h1>
+          <h1 className="text-3xl font-bold mb-2">🚀 AI Resume Analysis & Job Assistant</h1>
           <p className="text-gray-600 dark:text-gray-300">
-            Complete job application preparation in 4 simple steps
+            Complete AI-powered resume analysis and job application preparation in 4 simple steps
           </p>
         </div>
 

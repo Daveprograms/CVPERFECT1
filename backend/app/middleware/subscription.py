@@ -42,7 +42,7 @@ def check_feature_access(
         "resume_enhance": [SubscriptionType.PRO, SubscriptionType.ONE_TIME],
         "cover_letter": [SubscriptionType.PRO],
         "learning_path": [SubscriptionType.PRO],
-        "linkedin_integration": [SubscriptionType.PRO],
+    
         "job_matches": [SubscriptionType.PRO],
         "resume_sharing": [SubscriptionType.PRO],
         "analytics": [SubscriptionType.PRO]

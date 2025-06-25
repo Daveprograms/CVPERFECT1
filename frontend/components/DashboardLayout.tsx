@@ -9,15 +9,12 @@ import {
   FileText,
   Brain,
   Briefcase,
-  Linkedin,
   BarChart,
   CreditCard,
   Settings,
   BookOpen,
   LogOut,
   Home,
-  CoverLetter,
-  LearningPath,
   GraduationCap,
   ChartBar
 } from 'lucide-react'
@@ -93,14 +90,15 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       link: '/dashboard'
     },
     {
-      title: '🚀 Job Assistant',
+      title: '🚀 AI Resume Analysis',
       icon: Brain,
-      link: '/job-assistant'
+      link: '/job-assistant',
+      featured: true
     },
     {
-      title: 'Resume Analysis',
-      icon: FileText,
-      link: '/resumes/upload'
+      title: 'Job Assistant',
+      icon: Briefcase,
+      link: '/job-assistant'
     },
     {
       title: 'Resumes',
@@ -123,15 +121,16 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       link: '/learning-path'
     },
     {
+      title: 'Practice Exams',
+      icon: BookOpen,
+      link: '/practice-exams'
+    },
+    {
       title: 'Job Matches',
       icon: Briefcase,
       link: '/jobs'
     },
-    {
-      title: 'LinkedIn',
-      icon: Linkedin,
-      link: '/linkedin'
-    },
+
     {
       title: 'Analytics',
       icon: ChartBar,
@@ -196,18 +195,26 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             <nav className="p-4 space-y-1">
               {menuItems.map((item) => {
                 const isActive = pathname === item.link
+                const isFeatured = item.featured
                 return (
                   <Link
                     key={item.link}
                     href={item.link}
-                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                    className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-200 ${
                       isActive
-                        ? 'bg-primary text-white'
+                        ? 'bg-primary text-white shadow-lg'
+                        : isFeatured
+                        ? 'bg-gradient-to-r from-primary/10 to-purple-500/10 text-primary border border-primary/20 hover:from-primary/20 hover:to-purple-500/20 font-semibold'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                   >
                     <item.icon className="w-5 h-5" />
                     <span>{item.title}</span>
+                    {isFeatured && !isActive && (
+                      <div className="ml-auto">
+                        <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                      </div>
+                    )}
                   </Link>
                 )
               })}

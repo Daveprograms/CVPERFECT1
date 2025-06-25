@@ -16,7 +16,7 @@ class Resume(Base):
     enhanced_content = Column(Text, nullable=True)  # Base64 encoded binary content
     filename = Column(String(255), nullable=True)  # Original filename
     job_description = Column(Text, nullable=True)
-    linkedin_url = Column(String(255), nullable=True)
+
     score = Column(Float, nullable=True)
     feedback = Column(JSON, nullable=True)
     extracted_info = Column(JSON, nullable=True)
@@ -24,6 +24,7 @@ class Resume(Base):
     improvements = Column(JSON, nullable=True)
     cover_letter = Column(Text, nullable=True)
     learning_path = Column(JSON, nullable=True)
+    practice_exam = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

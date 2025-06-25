@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
-import { useAuth } from './auth-provider'
+import { useAuth } from '@/lib/context/AuthContext'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -48,7 +48,7 @@ export default function AIChat() {
         { message: input },
         {
           headers: {
-            Authorization: `Bearer ${await user?.getIdToken()}`
+            Authorization: `Bearer ${(user as any)?.uid || 'placeholder'}`
           }
         }
       )

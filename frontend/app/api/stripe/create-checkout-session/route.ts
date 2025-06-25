@@ -18,10 +18,10 @@ export async function POST(req: Request) {
       `${process.env.BACKEND_URL}/api/stripe/create-checkout-session`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.accessToken}`
-        },
+              headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${(session as any)?.accessToken || 'placeholder'}`
+      },
         body: JSON.stringify({ price_id })
       }
     )

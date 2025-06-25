@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { DashboardLayout } from '@/components/DashboardLayout'
+import DashboardLayout from '@/components/DashboardLayout'
 import { X, ArrowLeft } from 'lucide-react'
 import { motion } from 'framer-motion'
 

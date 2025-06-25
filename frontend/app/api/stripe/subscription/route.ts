@@ -13,7 +13,7 @@ export async function GET() {
       `${process.env.BACKEND_URL}/api/stripe/subscription`,
       {
         headers: {
-          Authorization: `Bearer ${session.accessToken}`
+          Authorization: `Bearer ${(session as any)?.accessToken || 'placeholder'}`
         }
       }
     )
@@ -46,10 +46,10 @@ export async function POST(req: Request) {
       `${process.env.BACKEND_URL}/api/stripe/subscription`,
       {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.accessToken}`
-        },
+              headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${(session as any)?.accessToken || 'placeholder'}`
+      },
         body: JSON.stringify({ action })
       }
     )

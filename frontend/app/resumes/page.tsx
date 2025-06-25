@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { 
   FileText,
   Plus,
@@ -10,32 +10,101 @@ import {
   Edit,
   Trash2,
   Star,
-  Loader2
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Target,
+  Mail,
+  GraduationCap,
+  Brain,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
-import Link from 'next/link'
+import { getAuthHeaders, isAuthenticated } from '@/lib/auth'
+
+interface Resume {
+  id: string;
+  filename: string;
+  score: number;
+  created_at: string;
+  updated_at: string;
+  has_feedback: boolean;
+  has_cover_letter: boolean;
+  has_learning_path: boolean;
+  has_practice_exam: boolean;
+}
+
+interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
+interface ResumeHistoryResponse {
+  resumes: Resume[];
+  pagination: PaginationInfo;
+}
 
 export default function ResumesPage() {
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+  const [resumes, setResumes] = useState<Resume[]>([])
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    page: 1,
+    limit: 10,
+    total: 0,
+    pages: 0
+  })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
-  const [showTemplateModal, setShowTemplateModal] = useState(false)
 
-  const resumes = [
-    {
-      id: 1,
-      title: 'Senior Developer Resume',
-      score: 85,
-      lastUpdated: '2024-03-15',
-      format: 'PDF'
-    },
-    {
-      id: 2,
-      title: 'Product Manager Resume',
-      score: 78,
-      lastUpdated: '2024-03-10',
-      format: 'DOCX'
+  useEffect(() => {
+    if (!isAuthenticated()) {
+      router.push('/auth/signin')
+      return
     }
-  ]
+    
+    fetchResumes(1)
+  }, [])
+
+  const fetchResumes = async (page: number) => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/resume/history?page=${page}&limit=10`, {
+        headers: getAuthHeaders()
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch resume history')
+      }
+
+      const data: ResumeHistoryResponse = await response.json()
+      setResumes(data.resumes)
+      setPagination(data.pagination)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load resumes')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= pagination.pages) {
+      fetchResumes(newPage)
+    }
+  }
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    )
+  }
 
   return (
     <DashboardLayout>
@@ -45,159 +114,193 @@ export default function ResumesPage() {
           <div>
             <h1 className="text-2xl font-bold mb-2">Resume Library</h1>
             <p className="text-gray-600 dark:text-gray-300">
-              Manage and organize your resumes
+              Manage and organize your resumes with AI-powered features
             </p>
           </div>
           <div className="flex space-x-3">
             <button
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center space-x-2 bg-primary text-white px-4 py-2 rounded-lg"
+              onClick={() => router.push('/job-assistant')}
+              className="flex items-center space-x-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90"
             >
               <Upload className="w-4 h-4" />
               <span>Upload Resume</span>
             </button>
-            <button
-              onClick={() => setShowTemplateModal(true)}
-              className="flex items-center space-x-2 bg-secondary text-primary px-4 py-2 rounded-lg"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Create New</span>
-            </button>
           </div>
         </div>
+
+        {error && (
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-red-600 dark:text-red-400">{error}</p>
+          </div>
+        )}
 
         {/* Resume Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {resumes.map((resume) => (
-            <div
-              key={resume.id}
-              className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm"
+        {resumes.length === 0 ? (
+          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
+            <FileText className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+            <h2 className="text-2xl font-bold mb-2">No Resumes Found</h2>
+            <p className="text-gray-600 dark:text-gray-300 mb-6">
+              Upload your first resume to get started with AI analysis and feedback.
+            </p>
+            <button
+              onClick={() => router.push('/job-assistant')}
+              className="btn-primary-fallback px-6 py-3 rounded-lg"
             >
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="font-semibold">{resume.title}</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Last updated: {resume.lastUpdated}
-                  </p>
+              Upload Your First Resume
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {resumes.map((resume) => (
+              <div
+                key={resume.id}
+                className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-1">{resume.filename}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Updated: {new Date(resume.updated_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  {resume.score ? (
+                    <div className="flex items-center space-x-1 bg-primary/10 text-primary px-2 py-1 rounded">
+                      <Star className="w-4 h-4" />
+                      <span className="text-sm font-medium">{resume.score}/100</span>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 dark:text-gray-400">Not analyzed</div>
+                  )}
                 </div>
-                <div className="flex items-center space-x-1 bg-primary/10 text-primary px-2 py-1 rounded">
-                  <Star className="w-4 h-4" />
-                  <span className="text-sm font-medium">{resume.score}/100</span>
-                </div>
-              </div>
-              <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-4">
-                <FileText className="w-4 h-4" />
-                <span>{resume.format}</span>
-              </div>
-              <div className="flex space-x-2">
-                <Link
-                  href={`/resumes/edit/${resume.id}`}
-                  className="flex-1 flex items-center justify-center space-x-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
-                >
-                  <Edit className="w-4 h-4" />
-                  <span>Edit</span>
-                </Link>
-                <Link
-                  href={`/resumes/download/${resume.id}`}
-                  className="flex-1 flex items-center justify-center space-x-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 px-3 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download</span>
-                </Link>
-                <button
-                  className="flex items-center justify-center space-x-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-3 py-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  <span>Delete</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
 
-        {/* Upload Modal */}
-        {showUploadModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-              <h2 className="text-xl font-semibold mb-4">Upload Resume</h2>
-              <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center">
-                <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-                <p className="text-gray-600 dark:text-gray-300 mb-2">
-                  Drag and drop your resume here
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Supports .pdf and .docx files
-                </p>
+                {/* Status Indicators */}
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
+                    resume.has_feedback 
+                      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' 
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                  }`}>
+                    {resume.has_feedback ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                    <span>Feedback</span>
+                  </div>
+                  
+                  <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
+                    resume.has_cover_letter 
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                  }`}>
+                    {resume.has_cover_letter ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                    <span>Cover Letter</span>
+                  </div>
+                  
+                  <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
+                    resume.has_learning_path 
+                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300' 
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                  }`}>
+                    {resume.has_learning_path ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                    <span>Learning Path</span>
+                  </div>
+                  
+                  <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
+                    resume.has_practice_exam 
+                      ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300' 
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                  }`}>
+                    {resume.has_practice_exam ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                    <span>Practice Exam</span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => router.push(`/ai-feedback/${resume.id}`)}
+                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      resume.has_feedback
+                        ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/30'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <Brain className="w-4 h-4" />
+                    <span>AI Feedback</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => router.push(`/cover-letters/${resume.id}`)}
+                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      resume.has_cover_letter
+                        ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/30'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>Cover Letter</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => router.push(`/learning-path/${resume.id}`)}
+                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      resume.has_learning_path
+                        ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/30'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <GraduationCap className="w-4 h-4" />
+                    <span>Learning Path</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => router.push(`/practice-exam/${resume.id}`)}
+                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      resume.has_practice_exam
+                        ? 'bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/30'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    <Target className="w-4 h-4" />
+                    <span>Practice Exam</span>
+                  </button>
+                </div>
               </div>
-              <div className="flex justify-end space-x-3 mt-4">
-                <button
-                  onClick={() => setShowUploadModal(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    setShowUploadModal(false)
-                    // Handle upload
-                  }}
-                  className="bg-primary text-white px-4 py-2 rounded-lg"
-                >
-                  Upload
-                </button>
-              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {pagination.pages > 1 && (
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600 dark:text-gray-300">
+              Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
+              {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
+              {pagination.total} resumes
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => handlePageChange(pagination.page - 1)}
+                disabled={pagination.page === 1}
+                className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              
+              <span className="px-3 py-2 text-sm">
+                Page {pagination.page} of {pagination.pages}
+              </span>
+              
+              <button
+                onClick={() => handlePageChange(pagination.page + 1)}
+                disabled={pagination.page === pagination.pages}
+                className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         )}
 
-        {/* Template Modal */}
-        {showTemplateModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
-              <h2 className="text-xl font-semibold mb-4">Create New Resume</h2>
-              <div className="space-y-4">
-                <button
-                  onClick={() => {
-                    setShowTemplateModal(false)
-                    // Handle template selection
-                  }}
-                  className="w-full flex items-center space-x-3 p-4 border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  <FileText className="w-6 h-6 text-primary" />
-                  <div className="text-left">
-                    <h3 className="font-medium">Use Template</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Start with a professional template
-                    </p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => {
-                    setShowTemplateModal(false)
-                    // Handle blank resume
-                  }}
-                  className="w-full flex items-center space-x-3 p-4 border dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  <Plus className="w-6 h-6 text-primary" />
-                  <div className="text-left">
-                    <h3 className="font-medium">Start from Scratch</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Create a custom resume
-                    </p>
-                  </div>
-                </button>
-              </div>
-              <div className="flex justify-end mt-4">
-                <button
-                  onClick={() => setShowTemplateModal(false)}
-                  className="px-4 py-2 text-gray-600 dark:text-gray-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+
       </div>
     </DashboardLayout>
   )

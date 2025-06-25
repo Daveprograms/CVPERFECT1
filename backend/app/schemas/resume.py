@@ -4,7 +4,7 @@ from datetime import datetime
 
 class ResumeBase(BaseModel):
     job_description: Optional[str] = None
-    linkedin_url: Optional[str] = None
+
 
 class ResumeCreate(ResumeBase):
     pass
@@ -60,14 +60,7 @@ class CoverLetterRequest(BaseModel):
 class CoverLetterResponse(BaseModel):
     cover_letter: str
 
-class LinkedInProfileResponse(BaseModel):
-    skills: List[str]
-    experience: List[Dict[str, Any]]
-    education: List[Dict[str, Any]]
-    recommendations: List[Dict[str, Any]]
-    certifications: List[Dict[str, Any]]
-    languages: List[str]
-    interests: List[str]
+
 
 class ResumeSnapshotResponse(BaseModel):
     score: float

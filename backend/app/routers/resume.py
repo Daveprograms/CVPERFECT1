@@ -37,7 +37,6 @@ from ..services.gemini_service import (
     analyze_resume_with_gemini,
     enhance_resume_with_gemini,
     generate_cover_letter_with_gemini,
-    extract_linkedin_profile_with_gemini,
     generate_learning_path_with_gemini,
     generate_practice_exam_with_gemini
 )
@@ -50,7 +49,6 @@ router = APIRouter()
 async def upload_resume(
     file: UploadFile = File(...),
     job_description: Optional[str] = Form(None),
-    linkedin_url: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user_test),
     db: Session = Depends(get_db)
 ):
@@ -60,7 +58,6 @@ async def upload_resume(
     print(f"3. User subscription: {current_user.subscription_type}")
     print(f"4. File details: name={file.filename}, content_type={file.content_type}")
     print(f"5. Job description provided: {bool(job_description)}")
-    print(f"6. LinkedIn URL provided: {bool(linkedin_url)}")
     
     try:
         # TEMPORARILY DISABLED: Check subscription - provide detailed error message
@@ -146,7 +143,6 @@ async def upload_resume(
             user_id=current_user.id,
             content=text_content,
             job_description=job_description,
-            linkedin_url=linkedin_url,
             filename=file.filename
         )
         
@@ -197,7 +193,7 @@ async def analyze_resume(
     try:
         # Use real Gemini analysis
         print("🤖 Starting Gemini AI analysis...")
-        analysis = analyze_resume_with_gemini(
+        analysis = await analyze_resume_with_gemini(
             resume.content,
             job_description or resume.job_description
         )
@@ -337,26 +333,39 @@ async def enhance_resume(
 @router.post("/cover-letter/{resume_id}")
 async def generate_cover_letter(
     resume_id: str,
-    job_description: str,
-    company_info: Optional[Dict[str, Any]] = None,
+    request: CoverLetterRequest,
     current_user: User = Depends(get_current_user_test),
     db: Session = Depends(get_db)
 ):
+    print(f"📝 Cover letter generation started for resume {resume_id} by user {current_user.id}")
+    
     # Get resume
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
         Resume.user_id == current_user.id
     ).first()
     if not resume:
+        print(f"❌ Resume {resume_id} not found for user {current_user.id}")
         raise HTTPException(status_code=404, detail="Resume not found")
 
+    print(f"✅ Resume found: {resume.filename}")
+
     try:
-        # Generate cover letter
+        print("🤖 Calling Gemini API to generate cover letter...")
+        # Generate cover letter using the text content
+        resume_text_content = resume.content or resume.enhanced_content or resume.original_content
+        print(f"📄 Using resume content: {len(resume_text_content) if resume_text_content else 0} characters")
+        
+        if not resume_text_content:
+            raise HTTPException(status_code=400, detail="Resume content not available for cover letter generation")
+        
         cover_letter = await generate_cover_letter_with_gemini(
-            resume.enhanced_content or resume.original_content,
-            job_description,
-            company_info
+            resume_text_content,
+            request.job_description,
+            None  # company_info not used for now
         )
+        
+        print(f"✅ Cover letter generated successfully (length: {len(cover_letter)} chars)")
 
         # Update resume
         resume.cover_letter = cover_letter
@@ -368,7 +377,7 @@ async def generate_cover_letter(
             resume_id=resume.id,
             action_type=ActionType.COVER_LETTER_GENERATION,
             metadata={
-                "has_company_info": bool(company_info)
+                "job_description_provided": bool(request.job_description)
             }
         )
         db.add(analytics)
@@ -377,12 +386,16 @@ async def generate_cover_letter(
         return {"cover_letter": cover_letter}
 
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"❌ Cover letter generation failed: {str(e)}")
+        print(f"❌ Error type: {type(e).__name__}")
+        import traceback
+        print(f"❌ Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=400, detail=f"Cover letter generation failed: {str(e)}")
 
 @router.post("/learning-path/{resume_id}")
 async def generate_learning_path(
     resume_id: str,
-    job_description: str,
+    request: CoverLetterRequest,
     current_user: User = Depends(get_current_user_test),
     db: Session = Depends(get_db)
 ):
@@ -395,10 +408,15 @@ async def generate_learning_path(
         raise HTTPException(status_code=404, detail="Resume not found")
 
     try:
-        # Generate learning path
+        # Generate learning path using the text content
+        resume_text_content = resume.content or resume.enhanced_content or resume.original_content
+        
+        if not resume_text_content:
+            raise HTTPException(status_code=400, detail="Resume content not available for learning path generation")
+            
         learning_path = await generate_learning_path_with_gemini(
-            resume.enhanced_content or resume.original_content,
-            job_description,
+            resume_text_content,
+            request.job_description,
             resume.feedback
         )
 
@@ -423,29 +441,48 @@ async def generate_learning_path(
 @router.post("/practice-exam/{resume_id}")
 async def generate_practice_exam(
     resume_id: str,
-    job_description: str,
+    request: CoverLetterRequest,
     current_user: User = Depends(get_current_user_test),
     db: Session = Depends(get_db)
 ):
     """Generate a custom practice exam based on resume and job requirements"""
+    print(f"🧪 Backend practice exam endpoint called for resume: {resume_id}")
+    print(f"👤 User: {current_user.email} (ID: {current_user.id})")
+    print(f"📝 Job description provided: {bool(request.job_description)}")
+    print(f"📝 Job description length: {len(request.job_description) if request.job_description else 0}")
+    
     # Get resume
     resume = db.query(Resume).filter(
         Resume.id == resume_id,
         Resume.user_id == current_user.id
     ).first()
     if not resume:
+        print(f"❌ Resume not found: {resume_id}")
         raise HTTPException(status_code=404, detail="Resume not found")
+
+    print(f"✅ Resume found: {resume.filename}")
+    print(f"📄 Resume content length: {len(resume.content) if resume.content else 0}")
 
     try:
         # Get learning path for context (if available)
         learning_plan = resume.learning_path or {}
+        print(f"🎓 Learning plan available: {bool(learning_plan)}")
         
         # Generate practice exam
+        print("🤖 Calling Gemini API for practice exam generation...")
         practice_exam = await generate_practice_exam_with_gemini(
             resume.content,
-            job_description,
+            request.job_description,
             learning_plan
         )
+        print(f"✅ Practice exam generated successfully")
+        print(f"📊 Exam info: {practice_exam.get('exam_info', {}).get('title', 'Unknown')}")
+        print(f"❓ Total questions: {len(practice_exam.get('questions', []))}")
+
+        # Save practice exam to database
+        resume.practice_exam = practice_exam
+        db.commit()
+        print("💾 Practice exam saved to database")
 
         # Track analytics
         analytics = Analytics(
@@ -455,10 +492,15 @@ async def generate_practice_exam(
         )
         db.add(analytics)
         db.commit()
+        print("✅ Analytics tracked")
 
         return practice_exam
 
     except Exception as e:
+        print(f"❌ Practice exam generation failed: {str(e)}")
+        print(f"❌ Error type: {type(e).__name__}")
+        import traceback
+        print(f"❌ Full traceback: {traceback.format_exc()}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/list", response_model=List[ResumeResponse])
@@ -472,17 +514,33 @@ async def list_resumes(
 
 @router.get("/history")
 async def get_resume_history(
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(10, ge=1, le=50, description="Items per page"),
     current_user: User = Depends(get_current_user_test),
     db: Session = Depends(get_db)
 ):
-    """Get all resumes with their analysis data for the current user"""
+    """Get paginated resumes with their analysis data for the current user"""
+    # Calculate offset
+    offset = (page - 1) * limit
+    
+    # Get total count
+    total_count = db.query(Resume).filter(
+        Resume.user_id == current_user.id
+    ).count()
+    
+    # Get paginated resumes
     resumes = db.query(Resume).filter(
-        Resume.user_id == current_user.id,
-        Resume.score.isnot(None)  # Only return analyzed resumes
-    ).order_by(Resume.created_at.desc()).all()
+        Resume.user_id == current_user.id
+    ).order_by(Resume.created_at.desc()).offset(offset).limit(limit).all()
     
     history_data = []
     for resume in resumes:
+        # Check which features are available
+        has_feedback = resume.feedback is not None
+        has_cover_letter = resume.cover_letter is not None and resume.cover_letter.strip() != ""
+        has_learning_path = resume.learning_path is not None
+        has_practice_exam = resume.practice_exam is not None
+        
         history_data.append({
             "id": str(resume.id),
             "filename": resume.filename,
@@ -494,12 +552,27 @@ async def get_resume_history(
             "job_matches": resume.job_matches,
             "improvements": resume.improvements,
             "job_description": resume.job_description,
-            "linkedin_url": resume.linkedin_url,
+            "cover_letter": resume.cover_letter,
+            "learning_path": resume.learning_path,
+            "practice_exam": resume.practice_exam,
             "created_at": resume.created_at.isoformat(),
-            "updated_at": resume.updated_at.isoformat()
+            "updated_at": resume.updated_at.isoformat(),
+            # Status indicators
+            "has_feedback": has_feedback,
+            "has_cover_letter": has_cover_letter,
+            "has_learning_path": has_learning_path,
+            "has_practice_exam": has_practice_exam
         })
     
-    return history_data
+    return {
+        "resumes": history_data,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total": total_count,
+            "pages": (total_count + limit - 1) // limit
+        }
+    }
 
 @router.get("/download/{resume_id}")
 async def download_resume_report(
@@ -839,50 +912,4 @@ async def get_feedback_history(
         print(f"Error getting feedback history: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to get feedback history")
 
-@router.post("/debug-analysis")
-async def debug_analysis():
-    """Debug endpoint to test AI analysis with sample resume"""
-    
-    # Test with mock empty feedback to verify validation works
-    mock_empty_feedback = [
-        {
-            "category": "Skills & Keywords",
-            "emoji": "🔧",
-            "items": [
-                {
-                    "job_wants": "",
-                    "you_have": "",
-                    "fix": "",
-                    "example_line": "",
-                    "bonus": "",
-                    "severity": "high"
-                }
-            ]
-        }
-    ]
-    
-    try:
-        print("🧪 Testing validation function with empty feedback...")
-        from ..services.gemini_service import validate_and_fix_feedback
-        
-        validated = validate_and_fix_feedback(mock_empty_feedback)
-        
-        return {
-            "success": True,
-            "test_type": "validation_test",
-            "original_empty": mock_empty_feedback[0]["items"][0],
-            "validated_filled": validated[0]["items"][0] if validated else {},
-            "validation_worked": bool(
-                validated and 
-                validated[0]["items"][0].get("job_wants") and
-                validated[0]["items"][0].get("you_have") and
-                validated[0]["items"][0].get("fix")
-            )
-        }
-    except Exception as e:
-        import traceback
-        return {
-            "success": False,
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        } 
+# Removed unused debug endpoint 

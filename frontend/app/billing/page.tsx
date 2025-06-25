@@ -84,7 +84,7 @@ export default function BillingPage() {
       features: [
         'Everything in Basic',
         'Up to 25 resume uploads',
-        'LinkedIn optimization',
+
         'Auto-Apply to Jobs (Coming Soon)',
         'Premium AI chat assistant access',
         'Save multiple resume versions by job title'

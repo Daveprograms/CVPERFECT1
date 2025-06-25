@@ -39,6 +39,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       user,
+      token: testToken, // Include token for localStorage
       message: 'Account created successfully'
     })
   } catch (error: any) {

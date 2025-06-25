@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const formData = await req.formData()
     const file = formData.get('file') as File
     const jobDescription = formData.get('job_description') as string
-    const linkedinUrl = formData.get('linkedin_url') as string
+  
 
     console.log('3. File details:', {
       name: file?.name,
@@ -31,13 +31,13 @@ export async function POST(req: Request) {
       hasFile: !!file
     })
     console.log('4. Job description length:', jobDescription?.length || 0)
-    console.log('5. LinkedIn URL provided:', !!linkedinUrl)
+    
 
     // Recreate FormData for backend
     const backendFormData = new FormData()
     if (file) backendFormData.append('file', file)
     if (jobDescription) backendFormData.append('job_description', jobDescription)
-    if (linkedinUrl) backendFormData.append('linkedin_url', linkedinUrl)
+    
 
     console.log('6. Sending request to backend...')
 

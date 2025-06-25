@@ -18,6 +18,7 @@ import {
 import DashboardLayout from '@/components/DashboardLayout'
 import Link from 'next/link'
 import { useAuth } from '@/lib/context/AuthContext'
+import { getAuthToken } from '@/lib/auth'
 
 interface ResumeAnalysis {
   score: number;
@@ -82,7 +83,7 @@ interface ResumeAnalysis {
 }
 
 export default function UploadResumePage() {
-  const { user, getToken } = useAuth()
+  const { user } = useAuth()
   const router = useRouter()
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
@@ -95,7 +96,7 @@ export default function UploadResumePage() {
   const [jobDescription, setJobDescription] = useState('')
   const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
-  const [linkedinUrl, setLinkedinUrl] = useState('')
+
   const [subscriptionStatus, setSubscriptionStatus] = useState<{
     subscription_type: string;
     can_upload: boolean;
@@ -189,9 +190,7 @@ export default function UploadResumePage() {
       if (jobDescription) {
         formData.append('job_description', jobDescription)
       }
-      if(linkedinUrl) {
-        formData.append('linkedin_url', linkedinUrl)
-      }
+      
 
       // Simulate upload progress
       const progressInterval = setInterval(() => {
@@ -298,7 +297,7 @@ export default function UploadResumePage() {
 
     setIsFixing(true)
     try {
-      const token = getToken()
+      const token = getAuthToken()
       if (!token) {
         throw new Error('Authentication token not found')
       }
@@ -398,25 +397,46 @@ export default function UploadResumePage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold mb-2">Resume Analysis</h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            Upload your resume and get instant AI-powered feedback and job matches
-          </p>
-          {subscriptionStatus && (
-            <div className="mt-2 p-3 rounded-lg text-sm bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400 border border-green-200 dark:border-green-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="font-medium">
-                    FREE Plan - Unlimited Uploads (Temporarily Enabled)
-                  </span>
-                  <span className="ml-2">✅ Free testing mode active</span>
-                </div>
-              </div>
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Header Section */}
+        <div className="text-center space-y-4">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-3xl font-bold text-gray-900 dark:text-white"
+          >
+            🚀 AI Resume Analysis
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
+          >
+            Upload your resume and get instant, professional feedback powered by AI. 
+            Receive detailed analysis, improvement suggestions, and ATS optimization tips.
+          </motion.p>
+          
+          {/* Features Preview */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex justify-center items-center space-x-8 text-sm text-gray-500 dark:text-gray-400 mt-6"
+          >
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span>Instant Scoring</span>
             </div>
-          )}
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span>Detailed Feedback</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+              <span>Job Matching</span>
+            </div>
+          </motion.div>
         </div>
 
         {/* Job Description Input */}

@@ -37,7 +37,7 @@ export async function GET() {
           pdf_export: true,
           docx_export: false,
           resume_templates: 0,
-          linkedin_optimization: false,
+    
           job_matching: false,
           premium_chat: false,
           versioning: false
