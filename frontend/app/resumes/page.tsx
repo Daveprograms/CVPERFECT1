@@ -26,6 +26,7 @@ import { getAuthHeaders, isAuthenticated } from '@/lib/auth'
 interface Resume {
   id: string;
   filename: string;
+  company_name: string;
   score: number;
   created_at: string;
   updated_at: string;
@@ -59,6 +60,7 @@ export default function ResumesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -93,6 +95,37 @@ export default function ResumesPage() {
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.pages) {
       fetchResumes(newPage)
+    }
+  }
+
+  const handleDeleteResume = async (resumeId: string) => {
+    if (!confirm('Are you sure you want to delete this resume? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      setDeletingResumeId(resumeId)
+      const response = await fetch(`/api/resume/delete/${resumeId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete resume')
+      }
+
+      // Refresh the resume list
+      await fetchResumes(pagination.page)
+      
+      // If current page is empty after deletion, go to previous page
+      if (resumes.length === 1 && pagination.page > 1) {
+        await fetchResumes(pagination.page - 1)
+      }
+
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete resume')
+    } finally {
+      setDeletingResumeId(null)
     }
   }
 
@@ -158,19 +191,33 @@ export default function ResumesPage() {
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-1">{resume.filename}</h3>
+                    <h3 className="font-semibold text-lg mb-1">{resume.company_name}</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Updated: {new Date(resume.updated_at).toLocaleDateString()}
+                      {resume.filename} • Updated: {new Date(resume.updated_at).toLocaleDateString()}
                     </p>
                   </div>
-                  {resume.score ? (
-                    <div className="flex items-center space-x-1 bg-primary/10 text-primary px-2 py-1 rounded">
-                      <Star className="w-4 h-4" />
-                      <span className="text-sm font-medium">{resume.score}/100</span>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-500 dark:text-gray-400">Not analyzed</div>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {resume.score ? (
+                      <div className="flex items-center space-x-1 bg-primary/10 text-primary px-2 py-1 rounded">
+                        <Star className="w-4 h-4" />
+                        <span className="text-sm font-medium">{resume.score}/100</span>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">Not analyzed</div>
+                    )}
+                    <button
+                      onClick={() => handleDeleteResume(resume.id)}
+                      disabled={deletingResumeId === resume.id}
+                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete resume"
+                    >
+                      {deletingResumeId === resume.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {/* Status Indicators */}

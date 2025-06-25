@@ -9,15 +9,16 @@ export async function GET(request: NextRequest) {
     const page = searchParams.get('page') || '1'
     const limit = searchParams.get('limit') || '10'
     
-    const token = request.cookies.get('access_token')?.value
-
-    if (!token) {
+    // Get auth token from request headers
+    const authHeader = request.headers.get('authorization') || ''
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    const response = await fetch(`${BACKEND_URL}/resumes/feedback-history?page=${page}&limit=${limit}`, {
+    const response = await fetch(`${BACKEND_URL}/api/resume/history?page=${page}&limit=${limit}`, {
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': authHeader,
         'Content-Type': 'application/json',
       },
     })

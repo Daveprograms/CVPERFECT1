@@ -541,9 +541,33 @@ async def get_resume_history(
         has_learning_path = resume.learning_path is not None
         has_practice_exam = resume.practice_exam is not None
         
+        # Extract company name from job description
+        company_name = "Unknown Company"
+        if resume.job_description:
+            # Simple extraction - look for common patterns
+            job_desc = resume.job_description.lower()
+            import re
+            
+            # Try to find company name patterns
+            company_patterns = [
+                r'at\s+([A-Z][a-zA-Z\s&.,]+?)(?:\s+is|\s+we|\s+has|\s+offers|\s+seeks|\s+looking|\n|$)',
+                r'([A-Z][a-zA-Z\s&.,]+?)\s+is\s+(?:looking|seeking|hiring)',
+                r'join\s+([A-Z][a-zA-Z\s&.,]+?)(?:\s+as|\s+team|\s+and|$)',
+                r'([A-Z][a-zA-Z\s&.,]+?)\s+(?:team|company|organization)',
+            ]
+            
+            for pattern in company_patterns:
+                match = re.search(pattern, resume.job_description, re.IGNORECASE)
+                if match:
+                    company_name = match.group(1).strip()
+                    # Clean up common false positives
+                    if len(company_name) > 3 and company_name not in ['The', 'Our', 'This', 'We', 'You']:
+                        break
+        
         history_data.append({
             "id": str(resume.id),
             "filename": resume.filename,
+            "company_name": company_name,
             "content": resume.content[:500] + "..." if resume.content and len(resume.content) > 500 else resume.content,
             "enhanced_content": resume.enhanced_content,
             "score": resume.score,
