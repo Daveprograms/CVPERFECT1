@@ -13,11 +13,12 @@ import {
   Star,
   Brain,
   Briefcase,
-  Target
+  Target,
+  ChevronLeft
 } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
 import Link from 'next/link'
-import { useAuth } from '@/lib/context/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import { getAuthToken } from '@/lib/auth'
 
 interface ResumeAnalysis {
@@ -399,44 +400,36 @@ export default function UploadResumePage() {
     <DashboardLayout>
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Header Section */}
-        <div className="text-center space-y-4">
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-bold text-gray-900 dark:text-white"
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold mb-2">Upload Resume</h1>
+            <p className="text-gray-600 dark:text-gray-300">
+              Upload your resume and get instant, professional feedback powered by AI
+            </p>
+          </div>
+          <Link
+            href="/resumes"
+            className="flex items-center space-x-2 text-primary hover:text-primary/80 transition-colors"
           >
-            🚀 AI Resume Analysis
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
-          >
-            Upload your resume and get instant, professional feedback powered by AI. 
-            Receive detailed analysis, improvement suggestions, and ATS optimization tips.
-          </motion.p>
-          
-          {/* Features Preview */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex justify-center items-center space-x-8 text-sm text-gray-500 dark:text-gray-400 mt-6"
-          >
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span>Instant Scoring</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span>Detailed Feedback</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span>Job Matching</span>
-            </div>
-          </motion.div>
+            <ChevronLeft className="w-4 h-4" />
+            <span>Back to Resumes</span>
+          </Link>
+        </div>
+        
+        {/* Features Preview */}
+        <div className="flex justify-center items-center space-x-8 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span>Instant Scoring</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <span>Detailed Feedback</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+            <span>Job Matching</span>
+          </div>
         </div>
 
         {/* Job Description Input */}

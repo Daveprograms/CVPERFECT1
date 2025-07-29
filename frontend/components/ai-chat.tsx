@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
-import { useAuth } from '@/lib/context/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 
 interface Message {
   role: 'user' | 'assistant'

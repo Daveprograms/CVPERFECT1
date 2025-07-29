@@ -154,7 +154,7 @@ export default function PracticeExamsPage() {
               Upload a resume and generate practice exams to get started.
             </p>
             <button
-              onClick={() => router.push('/job-assistant')}
+              onClick={() => router.push('/resumes')}
               className="btn-primary-fallback px-6 py-3 rounded-lg"
             >
               Upload Resume
@@ -214,7 +214,7 @@ export default function PracticeExamsPage() {
                       </button>
                     ) : (
                       <button
-                        onClick={() => router.push('/job-assistant')}
+                        onClick={() => router.push('/resumes')}
                         className="btn-secondary px-4 py-2 rounded-lg text-sm"
                       >
                         Generate Exam

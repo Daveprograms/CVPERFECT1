@@ -19,7 +19,7 @@ export async function POST(
     const authHeader = request.headers.get('authorization') || ''
     
     // Call backend API
-    const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/learning-path/${params.id}`, {
+    const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'}/api/resume/learning-path/${params.id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

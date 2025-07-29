@@ -9,9 +9,14 @@ load_dotenv('env')
 
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Update URL to use psycopg instead of psycopg2
+# Fallback to SQLite for development if no DATABASE_URL is set
+if not SQLALCHEMY_DATABASE_URL:
+    SQLALCHEMY_DATABASE_URL = "sqlite:///./cvperfect.db"
+    print("⚠️ No DATABASE_URL found, using SQLite for development")
+
+# Use psycopg2 instead of psycopg
 if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgresql://"):
-    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+psycopg://")
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

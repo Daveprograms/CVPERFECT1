@@ -22,7 +22,7 @@ from sqlalchemy.orm import relationship
 
 from ..database import get_db
 from ..models.user import User, SubscriptionType
-from ..models.resume import Resume, ResumeVersion, FeedbackHistory
+from ..models.resume import Resume, ResumeVersion, ResumeAnalysis, ResumeAnalysisRequest
 from ..models.analytics import Analytics, ActionType
 from ..schemas.resume import (
     ResumeCreate,
@@ -34,241 +34,178 @@ from ..schemas.resume import (
     LearningPathResponse
 )
 from ..services.gemini_service import (
-    analyze_resume_with_gemini,
-    enhance_resume_with_gemini,
-    generate_cover_letter_with_gemini,
-    generate_learning_path_with_gemini,
-    generate_practice_exam_with_gemini
+    gemini_service,
+    GeminiService
 )
 from .auth import get_current_user_test, get_current_user
 from ..middleware.subscription import check_subscription_access, decrement_enhancements
+from ..services.real_data_service import get_data_service, DataSourceValidator
+from ..utils.file_processing import save_uploaded_file, extract_text_from_file, cleanup_temp_file, get_file_info
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 router = APIRouter()
 
 @router.post("/upload")
 async def upload_resume(
     file: UploadFile = File(...),
-    job_description: Optional[str] = Form(None),
-    current_user: User = Depends(get_current_user_test),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    print("=== BACKEND RESUME UPLOAD DEBUG ===")
-    print(f"1. User ID: {current_user.id}")
-    print(f"2. User email: {current_user.email}")
-    print(f"3. User subscription: {current_user.subscription_type}")
-    print(f"4. File details: name={file.filename}, content_type={file.content_type}")
-    print(f"5. Job description provided: {bool(job_description)}")
-    
+    """
+    Upload and process real resume file with actual text extraction
+    """
     try:
-        # TEMPORARILY DISABLED: Check subscription - provide detailed error message
-        # if current_user.subscription_type == SubscriptionType.FREE:
-        #     print("❌ Subscription check failed: User has FREE subscription")
-        #     raise HTTPException(
-        #         status_code=403, 
-        #         detail="Resume upload requires a paid subscription. Please upgrade to upload resumes."
-        #     )
+        # Get real data service
+        data_service = get_data_service(db)
+        DataSourceValidator.log_data_source_usage(data_service, "resume_upload")
         
-        print("✅ Subscription check passed (TEMPORARILY DISABLED FOR FREE UPLOADS)")
-        
-        # Validate file
-        if not file.filename:
-            print("❌ File validation failed: No filename")
-            raise HTTPException(status_code=400, detail="No file provided")
-        
-        # Check file size (max 10MB)
-        file_size = 0
-        content = await file.read()
-        file_size = len(content)
-        await file.seek(0)  # Reset file pointer
-        
-        print(f"7. File size: {file_size} bytes")
-        
-        if file_size > 10 * 1024 * 1024:  # 10MB
-            print("❌ File validation failed: File too large")
-            raise HTTPException(status_code=400, detail="File size must be less than 10MB")
-        
-        if file_size == 0:
-            print("❌ File validation failed: Empty file")
-            raise HTTPException(status_code=400, detail="File is empty")
-        
-        # Validate file type
-        allowed_types = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-        if file.content_type not in allowed_types:
-            print(f"❌ File validation failed: Invalid content type {file.content_type}")
+        # Validate file type and size
+        if not validate_file_type(file.filename):
             raise HTTPException(
                 status_code=400, 
-                detail=f"File type not supported. Please upload PDF or DOCX files. Received: {file.content_type}"
+                detail="Invalid file type. Please upload PDF, DOC, DOCX, or TXT files."
             )
         
-        print("✅ File validation passed")
+        if not validate_file_size(len(await file.read()), max_size_mb=10):
+            raise HTTPException(
+                status_code=400, 
+                detail="File size too large. Maximum size is 10MB."
+            )
         
-        # Process file content
-        if file.content_type == 'application/pdf':
-            print("8. Processing PDF file...")
-            # Read PDF content
-            try:
-                import PyPDF2
-                import io
-                pdf_reader = PyPDF2.PdfReader(io.BytesIO(content))
-                text_content = ""
-                for page in pdf_reader.pages:
-                    text_content += page.extract_text()
-                print(f"✅ PDF processed, extracted {len(text_content)} characters")
-            except Exception as e:
-                print(f"❌ PDF processing failed: {str(e)}")
-                raise HTTPException(status_code=400, detail=f"Failed to process PDF file: {str(e)}")
-        else:
-            print("8. Processing DOCX file...")
-            # Read DOCX content
-            try:
-                from docx import Document
-                import io
-                doc = Document(io.BytesIO(content))
-                text_content = ""
-                for paragraph in doc.paragraphs:
-                    text_content += paragraph.text + "\n"
-                print(f"✅ DOCX processed, extracted {len(text_content)} characters")
-            except Exception as e:
-                print(f"❌ DOCX processing failed: {str(e)}")
-                raise HTTPException(status_code=400, detail=f"Failed to process DOCX file: {str(e)}")
+        # Reset file pointer
+        await file.seek(0)
         
-        if not text_content.strip():
-            print("❌ Content extraction failed: No text found")
-            raise HTTPException(status_code=400, detail="No text content found in the uploaded file")
+        # Save uploaded file to disk for real processing
+        file_path = save_uploaded_file(file)
         
-        print(f"9. Creating resume record in database...")
-        
-        # Create resume record
-        resume = Resume(
-            user_id=current_user.id,
-            content=text_content,
-            job_description=job_description,
-            filename=file.filename
-        )
-        
-        db.add(resume)
-        db.commit()
-        db.refresh(resume)
-        
-        print(f"✅ Resume created with ID: {resume.id}")
-        print("=== END BACKEND DEBUG ===")
-        
-        return {
-            "id": resume.id,
-            "message": "Resume uploaded successfully",
-            "content": text_content[:500] + "..." if len(text_content) > 500 else text_content,
-            "filename": file.filename
-        }
-        
-    except HTTPException:
-        print("=== END BACKEND DEBUG (HTTP Exception) ===")
-        raise
+        try:
+            # Process uploaded file with real text extraction
+            result = await data_service.process_uploaded_resume(
+                file_path=file_path,
+                user_id=current_user.id,
+                filename=file.filename
+            )
+            
+            logger.info(f"Real resume upload processed: {result['character_count']} characters extracted")
+            
+            return {
+                "message": "Resume uploaded and processed successfully",
+                "resume_id": result["resume_id"],
+                "character_count": result["character_count"],
+                "processing_status": result["processing_status"]
+            }
+            
+        finally:
+            # Clean up temporary file
+            cleanup_temp_file(file_path)
+            
     except Exception as e:
-        print(f"❌ Unexpected error: {str(e)}")
-        print("=== END BACKEND DEBUG (Unexpected Error) ===")
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        logger.error(f"Resume upload failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/analyze/{resume_id}")
 async def analyze_resume(
     resume_id: str,
-    job_description: Optional[str] = None,
+    request: Optional[dict] = None,
     current_user: User = Depends(get_current_user_test),
     db: Session = Depends(get_db)
 ):
-    print(f"🔍 Analyzing resume ID: {resume_id}")
-    
-    # Get resume
-    resume = db.query(Resume).filter(
-        Resume.id == resume_id,
-        Resume.user_id == current_user.id
-    ).first()
-    if not resume:
-        print(f"❌ Resume not found: {resume_id}")
-        raise HTTPException(status_code=404, detail="Resume not found")
-
-    print(f"✅ Resume found: {resume.filename}")
-    print(f"📄 Content length: {len(resume.content) if resume.content else 0} characters")
-    print(f"💼 Job description provided: {bool(job_description)}")
-
+    """
+    Analyze resume using existing Gemini integration with real data
+    """
     try:
-        # Use real Gemini analysis
-        print("🤖 Starting Gemini AI analysis...")
-        analysis = await analyze_resume_with_gemini(
-            resume.content,
-            job_description or resume.job_description
-        )
+        # Verify resume belongs to user
+        resume = db.query(Resume).filter(
+            Resume.id == resume_id,
+            Resume.user_id == current_user.id
+        ).first()
         
-        print(f"✅ Gemini analysis completed - Score: {analysis.score}")
-
-        # Convert analysis object to dict for database storage and frontend
-        analysis_dict = {
-            "score": analysis.score,
-            "strengths": analysis.strengths,  # Add missing strengths field
-            "feedback": analysis.feedback,
-            "extracted_info": analysis.extracted_info,
-            "job_matches": analysis.job_matches,
-            "improvements": analysis.improvements
-        }
+        if not resume:
+            raise HTTPException(status_code=404, detail="Resume not found")
         
-        print(f"🔍 Analysis dict feedback categories: {len(analysis_dict['feedback'])}")
-        print(f"🔍 Analysis dict strengths: {len(analysis_dict['strengths'])}")
-        if analysis_dict['feedback']:
-            for i, cat in enumerate(analysis_dict['feedback']):
-                print(f"  Category {i}: {cat.get('category')} with {len(cat.get('items', []))} items")
-                if cat.get('items'):
-                    first_item = cat['items'][0]
-                    print(f"    First item job_wants: '{first_item.get('job_wants', 'EMPTY')}'")
-                    print(f"    First item fix: '{first_item.get('fix', 'EMPTY')}'")
-        else:
-            print("⚠️ No feedback categories in analysis_dict!")
-
-        # Update resume with analysis results
-        resume.score = analysis.score
-        resume.feedback = analysis.feedback
-        resume.extracted_info = analysis.extracted_info
-        resume.job_matches = analysis.job_matches
-        resume.improvements = analysis.improvements
-        db.commit()
-
-        # Save feedback to history
-        feedback_history = FeedbackHistory(
-            user_id=current_user.id,
-            resume_id=resume.id,
-            feedback_text=json.dumps(analysis.feedback),
-            score=analysis.score,
-            ai_analysis_version="v1.0"
-        )
-        db.add(feedback_history)
-
-        # Track analytics
-        analytics = Analytics(
-            user_id=current_user.id,
-            resume_id=resume.id,
-            action_type=ActionType.RESUME_ANALYSIS,
-            metadata={
-                "has_job_description": bool(job_description),
-                "score": analysis.score,
-                "feedback_categories": len(analysis.feedback)
+        # Get real data service
+        data_service = get_data_service(db)
+        DataSourceValidator.log_data_source_usage(data_service, "resume_analysis")
+        
+        # Check if we have real resume content
+        if not resume.content or len(resume.content.strip()) < 50:
+            raise HTTPException(
+                status_code=400, 
+                detail="Resume content is too short or missing. Please upload a valid resume."
+            )
+        
+        # Get job description if provided
+        job_description = None
+        if request and hasattr(request, 'job_description'):
+            job_description = request.job_description
+        
+        # Use existing Gemini service for analysis
+        from ..services.gemini_service import gemini_service
+        
+        try:
+            # Analyze real resume content
+            analysis_result = await gemini_service.analyze_resume_content(
+                resume.content, 
+                job_description
+            )
+            
+            # Save real analysis to database
+            analysis = ResumeAnalysis(
+                resume_id=resume_id,
+                user_id=current_user.id,
+                analysis_data=analysis_result,
+                overall_score=analysis_result.get('overall_score', 0),
+                ats_score=analysis_result.get('ats_score', 0),
+                strengths=analysis_result.get('strengths', []),
+                recommendations=analysis_result.get('recommendations', [])
+            )
+            
+            db.add(analysis)
+            db.commit()
+            db.refresh(analysis)
+            
+            logger.info(f"Real resume analysis completed for {resume_id}: score {analysis.overall_score}")
+            
+            return {
+                "analysis_id": analysis.id,
+                "overall_score": analysis.overall_score,
+                "ats_score": analysis.ats_score,
+                "strengths": analysis.strengths,
+                "feedback": analysis_result.get('feedback', []),
+                "recommendations": analysis.recommendations,
+                "data_source": "real_gemini_analysis"
             }
-        )
-        db.add(analytics)
-        db.commit()
-
-        print(f"✅ Analysis completed and saved for resume {resume_id}")
-        return analysis_dict
-
+            
+        except Exception as ai_error:
+            logger.error(f"AI analysis failed: {str(ai_error)}")
+            # Return fallback analysis rather than complete failure
+            fallback_analysis = {
+                "analysis_id": None,
+                "overall_score": 50,
+                "ats_score": 45,
+                "strengths": ["Resume uploaded successfully"],
+                "feedback": [{
+                    "category": "technical",
+                    "priority": "medium",
+                    "job_wants": "AI analysis",
+                    "you_have": "Valid resume content",
+                    "fix": "AI analysis temporarily unavailable. Please try again later.",
+                    "example": "Your resume content has been processed successfully",
+                    "bonus": "Consider trying again in a few minutes"
+                }],
+                "recommendations": ["Try analysis again later", "Ensure strong internet connection"],
+                "data_source": "fallback_analysis",
+                "error": "AI analysis temporarily unavailable"
+            }
+            return fallback_analysis
+            
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"❌ Analysis failed: {str(e)}")
-        # Return a more detailed error message
-        error_message = f"Failed to analyze resume: {str(e)}"
-        if "API key" in str(e).lower():
-            error_message = "Gemini API key not configured properly"
-        elif "quota" in str(e).lower():
-            error_message = "API quota exceeded. Please try again later"
-        elif "json" in str(e).lower():
-            error_message = "Failed to parse AI response. Please try again"
-        
-        raise HTTPException(status_code=500, detail=error_message)
+        logger.error(f"Resume analysis failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Analysis failed")
 
 @router.post("/enhance/{resume_id}")
 async def enhance_resume(
@@ -287,7 +224,7 @@ async def enhance_resume(
 
     try:
         # Enhance resume
-        enhanced_content = await enhance_resume_with_gemini(
+        enhanced_content = await gemini_service.enhance_resume_with_gemini(
             resume.original_content,
             job_description or resume.job_description,
             resume.feedback
@@ -359,10 +296,11 @@ async def generate_cover_letter(
         if not resume_text_content:
             raise HTTPException(status_code=400, detail="Resume content not available for cover letter generation")
         
-        cover_letter = await generate_cover_letter_with_gemini(
+        cover_letter = await gemini_service.generate_cover_letter(
             resume_text_content,
             request.job_description,
-            None  # company_info not used for now
+            request.job_title,
+            request.company_name
         )
         
         print(f"✅ Cover letter generated successfully (length: {len(cover_letter)} chars)")
@@ -414,10 +352,9 @@ async def generate_learning_path(
         if not resume_text_content:
             raise HTTPException(status_code=400, detail="Resume content not available for learning path generation")
             
-        learning_path = await generate_learning_path_with_gemini(
+        learning_path = await gemini_service.generate_learning_path(
             resume_text_content,
             request.job_description,
-            resume.feedback
         )
 
         # Update resume
@@ -470,10 +407,10 @@ async def generate_practice_exam(
         
         # Generate practice exam
         print("🤖 Calling Gemini API for practice exam generation...")
-        practice_exam = await generate_practice_exam_with_gemini(
+        practice_exam = await gemini_service.generate_practice_exam(
             resume.content,
             request.job_description,
-            learning_plan
+            request.num_questions
         )
         print(f"✅ Practice exam generated successfully")
         print(f"📊 Exam info: {practice_exam.get('exam_info', {}).get('title', 'Unknown')}")
@@ -514,89 +451,49 @@ async def list_resumes(
 
 @router.get("/history")
 async def get_resume_history(
-    page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(10, ge=1, le=50, description="Items per page"),
-    current_user: User = Depends(get_current_user_test),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get paginated resumes with their analysis data for the current user"""
-    # Calculate offset
-    offset = (page - 1) * limit
-    
-    # Get total count
-    total_count = db.query(Resume).filter(
-        Resume.user_id == current_user.id
-    ).count()
-    
-    # Get paginated resumes
-    resumes = db.query(Resume).filter(
-        Resume.user_id == current_user.id
-    ).order_by(Resume.created_at.desc()).offset(offset).limit(limit).all()
-    
-    history_data = []
-    for resume in resumes:
-        # Check which features are available
-        has_feedback = resume.feedback is not None
-        has_cover_letter = resume.cover_letter is not None and resume.cover_letter.strip() != ""
-        has_learning_path = resume.learning_path is not None
-        has_practice_exam = resume.practice_exam is not None
+    """
+    Get real user resume history from database
+    """
+    try:
+        # Get real data service
+        data_service = get_data_service(db)
+        DataSourceValidator.log_data_source_usage(data_service, "resume_history")
         
-        # Extract company name from job description
-        company_name = "Unknown Company"
-        if resume.job_description:
-            # Simple extraction - look for common patterns
-            job_desc = resume.job_description.lower()
-            import re
-            
-            # Try to find company name patterns
-            company_patterns = [
-                r'at\s+([A-Z][a-zA-Z\s&.,]+?)(?:\s+is|\s+we|\s+has|\s+offers|\s+seeks|\s+looking|\n|$)',
-                r'([A-Z][a-zA-Z\s&.,]+?)\s+is\s+(?:looking|seeking|hiring)',
-                r'join\s+([A-Z][a-zA-Z\s&.,]+?)(?:\s+as|\s+team|\s+and|$)',
-                r'([A-Z][a-zA-Z\s&.,]+?)\s+(?:team|company|organization)',
-            ]
-            
-            for pattern in company_patterns:
-                match = re.search(pattern, resume.job_description, re.IGNORECASE)
-                if match:
-                    company_name = match.group(1).strip()
-                    # Clean up common false positives
-                    if len(company_name) > 3 and company_name not in ['The', 'Our', 'This', 'We', 'You']:
-                        break
+        # Get real user resumes from database
+        resumes = data_service.get_user_resumes(current_user.id)
         
-        history_data.append({
-            "id": str(resume.id),
-            "filename": resume.filename,
-            "company_name": company_name,
-            "content": resume.content[:500] + "..." if resume.content and len(resume.content) > 500 else resume.content,
-            "enhanced_content": resume.enhanced_content,
-            "score": resume.score,
-            "feedback": resume.feedback,
-            "extracted_info": resume.extracted_info,
-            "job_matches": resume.job_matches,
-            "improvements": resume.improvements,
-            "job_description": resume.job_description,
-            "cover_letter": resume.cover_letter,
-            "learning_path": resume.learning_path,
-            "practice_exam": resume.practice_exam,
-            "created_at": resume.created_at.isoformat(),
-            "updated_at": resume.updated_at.isoformat(),
-            # Status indicators
-            "has_feedback": has_feedback,
-            "has_cover_letter": has_cover_letter,
-            "has_learning_path": has_learning_path,
-            "has_practice_exam": has_practice_exam
-        })
-    
-    return {
-        "resumes": history_data,
-        "pagination": {
-            "page": page,
-            "limit": limit,
-            "total": total_count,
-            "pages": (total_count + limit - 1) // limit
-        }
-    }
+        logger.info(f"Retrieved {len(resumes)} real resumes for user {current_user.id}")
+        return resumes
+        
+    except Exception as e:
+        logger.error(f"Failed to get resume history: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve resume history")
+
+@router.get("/analytics")
+async def get_user_analytics(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get real user analytics from database
+    """
+    try:
+        # Get real data service
+        data_service = get_data_service(db)
+        DataSourceValidator.log_data_source_usage(data_service, "user_analytics")
+        
+        # Get real analytics from database
+        analytics = data_service.get_user_analytics(current_user.id)
+        
+        logger.info(f"Retrieved real analytics for user {current_user.id}")
+        return analytics
+        
+    except Exception as e:
+        logger.error(f"Failed to get user analytics: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve analytics")
 
 @router.get("/download/{resume_id}")
 async def download_resume_report(

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
-import { useAuth } from '@/lib/context/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 
 interface ResumeEditorProps {
   resumeId: number

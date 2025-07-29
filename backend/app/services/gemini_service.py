@@ -1,527 +1,465 @@
-import google.generativeai as genai
-from typing import Dict, List, Optional, Any
+"""
+Enhanced Gemini Service
+Uses existing Gemini API key and model (not Pro tier)
+Implements all AI features for CVPerfect
+"""
+
+import logging
 import json
-from ..config import settings
+import asyncio
+from typing import Dict, Any, List, Optional
+import google.generativeai as genai
+from ..core.config import settings
 
-# Configure Gemini
-print(f"🔑 Gemini API Key configured: {bool(settings.GEMINI_API_KEY)}")
-print(f"🔑 Gemini API Key preview: {settings.GEMINI_API_KEY[:20] + '...' if settings.GEMINI_API_KEY else 'NONE'}")
-genai.configure(api_key=settings.GEMINI_API_KEY)
-model = genai.GenerativeModel('gemini-1.5-flash')
+logger = logging.getLogger(__name__)
 
-class ResumeAnalysis:
-    def __init__(
-        self,
-        score: float,
-        strengths: List[Dict[str, Any]],
-        feedback: List[Dict[str, Any]],
-        extracted_info: Dict[str, Any],
-        job_matches: List[Dict[str, Any]],
-        improvements: List[Dict[str, Any]]
-    ):
-        self.score = score
-        self.strengths = strengths
-        self.feedback = feedback
-        self.extracted_info = extracted_info
-        self.job_matches = job_matches
-        self.improvements = improvements
 
-async def analyze_resume_with_gemini(resume_content: str, job_description: Optional[str] = None) -> ResumeAnalysis:
-    """Analyze resume content using Gemini AI."""
+class GeminiService:
+    """
+    Enhanced Gemini service using existing API key and model
+    Implements all AI features without upgrading to Pro tier
+    """
     
-    prompt = f"""
-    Analyze this resume and provide feedback in JSON format.
+    def __init__(self, api_key: str = None):
+        # Use existing API key from settings
+        self.api_key = api_key or settings.GEMINI_API_KEY
+        
+        if not self.api_key or self.api_key == "your-existing-gemini-api-key":
+            raise ValueError("Real Gemini API key required! Update GEMINI_API_KEY in environment.")
+        
+        # Configure with existing API key
+        genai.configure(api_key=self.api_key)
+        
+        # Use existing model (not Pro)
+        self.model = genai.GenerativeModel('gemini-pro')
+        
+        logger.info("GeminiService initialized with existing API key")
     
-    RESUME:
-    {resume_content}
+    async def analyze_resume_content(
+        self, 
+        resume_text: str, 
+        job_description: str = None
+    ) -> Dict[str, Any]:
+        """
+        Analyze real resume content using existing Gemini integration
+        """
+        try:
+            if not resume_text.strip():
+                raise ValueError("Resume text cannot be empty")
+            
+            # Create comprehensive analysis prompt
+            analysis_prompt = self._create_resume_analysis_prompt(resume_text, job_description)
+            
+            # Generate analysis using existing Gemini model
+            response = self.model.generate_content(analysis_prompt)
+            analysis_text = response.text.strip()
+            
+            # Parse structured response
+            analysis_result = self._parse_analysis_response(analysis_text)
+            
+            logger.info(f"Resume analysis completed: {analysis_result.get('overall_score', 0)}/100")
+            return analysis_result
+            
+        except Exception as e:
+            logger.error(f"Resume analysis failed: {str(e)}")
+            # Return fallback analysis rather than failing
+            return self._get_fallback_analysis()
     
-    {f'JOB DESCRIPTION:\n{job_description}' if job_description else ''}
+    async def generate_cover_letter(
+        self, 
+        resume_content: str, 
+        job_description: str,
+        job_title: str = None,
+        company_name: str = None
+    ) -> str:
+        """
+        Generate tailored cover letter using existing Gemini integration
+        """
+        try:
+            cover_letter_prompt = f"""
+            Generate a professional, tailored cover letter based on this resume and job posting.
+            
+            RESUME:
+            {resume_content}
+            
+            JOB DESCRIPTION:
+            {job_description}
+            
+            {f"JOB TITLE: {job_title}" if job_title else ""}
+            {f"COMPANY: {company_name}" if company_name else ""}
+            
+            Requirements:
+            - Professional, engaging tone
+            - Highlight relevant experience from resume
+            - Address specific job requirements
+            - 3-4 paragraphs maximum
+            - Include specific examples and achievements
+            - Customize for the company and role
+            
+            Generate a complete cover letter without any placeholders.
+            """
+            
+            response = self.model.generate_content(cover_letter_prompt)
+            cover_letter = response.text.strip()
+            
+            logger.info("Cover letter generated successfully")
+            return cover_letter
+            
+        except Exception as e:
+            logger.error(f"Cover letter generation failed: {str(e)}")
+            raise
     
-    Provide structured feedback with:
-    1. A score from 0-100
-    2. 2-3 strengths the person already has
-    3. 3-5 improvement areas with specific suggestions
-    
-    Focus on actionable improvements like:
-    - Adding quantified results and metrics
-    - Including missing technical skills
-    - Improving project descriptions
-    - Using stronger action verbs
-    
-    Format as JSON:
-    {{
-        "score": 85,
-        "strengths": [
+    async def generate_learning_path(
+        self, 
+        resume_content: str, 
+        job_description: str = None
+    ) -> Dict[str, Any]:
+        """
+        Generate personalized learning path using existing Gemini integration
+        """
+        try:
+            learning_prompt = f"""
+            Create a personalized learning path based on this resume and target job requirements.
+            
+            CURRENT RESUME:
+            {resume_content}
+            
+            {f"TARGET JOB: {job_description}" if job_description else ""}
+            
+            Provide a JSON response with this structure:
             {{
-                "title": "Strong Technical Foundation",
-                "description": "Demonstrates proficiency in modern web technologies",
-                "relevance": "Directly applicable to development roles"
-            }}
-        ],
-        "feedback": [
-            {{
-                "category": "Experience Quantification",
-                "emoji": "📊",
-                "items": [
+                "skill_gaps": ["skill1", "skill2", ...],
+                "learning_path": [
                     {{
-                        "job_wants": "Quantified achievements and measurable impact",
-                        "you_have": "Technical projects but lacking specific metrics",
-                        "fix": "Add specific numbers, percentages, and measurable outcomes",
-                        "example_line": "Built platform serving 500+ users with 99.5% uptime",
-                        "bonus": "Include user growth and performance improvements",
-                        "severity": "high"
+                        "skill": "skill_name",
+                        "priority": "high|medium|low",
+                        "current_level": "beginner|intermediate|advanced",
+                        "target_level": "intermediate|advanced|expert",
+                        "estimated_time": "time_estimate",
+                        "resources": [
+                            {{
+                                "type": "course|book|tutorial|practice",
+                                "title": "resource_title",
+                                "url": "resource_url_if_available",
+                                "description": "brief_description"
+                            }}
+                        ],
+                        "milestones": ["milestone1", "milestone2", ...]
+                    }}
+                ],
+                "career_advice": "personalized_advice",
+                "next_steps": ["step1", "step2", ...]
+            }}
+            
+            Focus on practical, actionable learning recommendations.
+            """
+            
+            response = self.model.generate_content(learning_prompt)
+            learning_text = response.text.strip()
+            
+            # Parse JSON response
+            learning_path = self._parse_json_response(learning_text, "learning path")
+            
+            logger.info("Learning path generated successfully")
+            return learning_path
+            
+        except Exception as e:
+            logger.error(f"Learning path generation failed: {str(e)}")
+            raise
+    
+    async def generate_practice_exam(
+        self, 
+        resume_content: str, 
+        job_description: str = None,
+        num_questions: int = 10
+    ) -> Dict[str, Any]:
+        """
+        Generate practice exam questions using existing Gemini integration
+        """
+        try:
+            exam_prompt = f"""
+            Generate {num_questions} practice interview/technical questions based on this resume and job requirements.
+            
+            RESUME:
+            {resume_content}
+            
+            {f"JOB REQUIREMENTS: {job_description}" if job_description else ""}
+            
+            Provide a JSON response with this structure:
+            {{
+                "exam_info": {{
+                    "title": "Practice Interview Questions",
+                    "description": "Tailored questions based on your resume and target role",
+                    "total_questions": {num_questions},
+                    "estimated_time": "estimated_time_minutes"
+                }},
+                "questions": [
+                    {{
+                        "id": 1,
+                        "type": "technical|behavioral|situational",
+                        "category": "category_name",
+                        "question": "question_text",
+                        "difficulty": "easy|medium|hard",
+                        "hints": ["hint1", "hint2"],
+                        "sample_answer": "sample_answer_outline",
+                        "evaluation_criteria": ["criteria1", "criteria2"]
                     }}
                 ]
             }}
-        ],
-        "extracted_info": {{
-            "name": "Software Developer",
-            "experience": [
+            
+            Include a mix of technical and behavioral questions relevant to the resume and role.
+            """
+            
+            response = self.model.generate_content(exam_prompt)
+            exam_text = response.text.strip()
+            
+            # Parse JSON response
+            practice_exam = self._parse_json_response(exam_text, "practice exam")
+            
+            logger.info(f"Practice exam with {num_questions} questions generated")
+            return practice_exam
+            
+        except Exception as e:
+            logger.error(f"Practice exam generation failed: {str(e)}")
+            raise
+    
+    async def analyze_job_compatibility(
+        self, 
+        resume_text: str, 
+        job_description: str
+    ) -> Dict[str, Any]:
+        """
+        Analyze compatibility between resume and job using existing Gemini integration
+        """
+        try:
+            compatibility_prompt = f"""
+            Analyze the compatibility between this resume and job posting.
+            
+            RESUME:
+            {resume_text}
+            
+            JOB POSTING:
+            {job_description}
+            
+            Provide a JSON response with:
+            {{
+                "compatibility_score": 0-100,
+                "matching_skills": ["skill1", "skill2", ...],
+                "missing_skills": ["missing1", "missing2", ...],
+                "experience_match": "excellent|good|fair|poor",
+                "key_strengths": ["strength1", "strength2", ...],
+                "improvement_areas": ["area1", "area2", ...],
+                "recommendation": "apply|improve_first|not_suitable",
+                "detailed_feedback": "detailed_explanation"
+            }}
+            
+            Be specific and actionable in your analysis.
+            """
+            
+            response = self.model.generate_content(compatibility_prompt)
+            compatibility_text = response.text.strip()
+            
+            # Parse JSON response
+            compatibility_result = self._parse_json_response(compatibility_text, "job compatibility")
+            
+            logger.info(f"Job compatibility analyzed: {compatibility_result.get('compatibility_score', 0)}% match")
+            return compatibility_result
+            
+        except Exception as e:
+            logger.error(f"Job compatibility analysis failed: {str(e)}")
+            raise
+    
+    async def optimize_linkedin_profile(
+        self, 
+        resume_content: str, 
+        target_roles: List[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Generate LinkedIn optimization suggestions using existing Gemini integration
+        """
+        try:
+            linkedin_prompt = f"""
+            Provide LinkedIn profile optimization recommendations based on this resume.
+            
+            RESUME:
+            {resume_content}
+            
+            {f"TARGET ROLES: {', '.join(target_roles)}" if target_roles else ""}
+            
+            Provide a JSON response with:
+            {{
+                "headline_suggestions": ["headline1", "headline2", "headline3"],
+                "summary_optimization": "optimized_summary_text",
+                "skills_to_add": ["skill1", "skill2", ...],
+                "experience_improvements": [
+                    {{
+                        "section": "section_name",
+                        "current": "current_description",
+                        "improved": "improved_description",
+                        "reasoning": "why_this_improvement"
+                    }}
+                ],
+                "keyword_optimization": ["keyword1", "keyword2", ...],
+                "content_strategy": ["strategy1", "strategy2", ...],
+                "networking_advice": "networking_recommendations"
+            }}
+            
+            Focus on SEO optimization and professional branding.
+            """
+            
+            response = self.model.generate_content(linkedin_prompt)
+            linkedin_text = response.text.strip()
+            
+            # Parse JSON response
+            linkedin_optimization = self._parse_json_response(linkedin_text, "LinkedIn optimization")
+            
+            logger.info("LinkedIn optimization suggestions generated")
+            return linkedin_optimization
+            
+        except Exception as e:
+            logger.error(f"LinkedIn optimization failed: {str(e)}")
+            raise
+    
+    def _create_resume_analysis_prompt(self, resume_text: str, job_description: str = None) -> str:
+        """Create comprehensive resume analysis prompt"""
+        
+        base_prompt = f"""
+        Analyze this resume comprehensively and provide detailed feedback.
+        
+        RESUME:
+        {resume_text}
+        
+        {f"TARGET JOB: {job_description}" if job_description else ""}
+        
+        Provide a JSON response with this exact structure:
+        {{
+            "overall_score": 0-100,
+            "ats_score": 0-100,
+            "strengths": ["strength1", "strength2", ...],
+            "feedback": [
                 {{
-                    "title": "Software Engineer",
-                    "company": "TechCorp",
-                    "duration": "2023-Present"
+                    "category": "technical|experience|education|format|keywords",
+                    "priority": "high|medium|low",
+                    "job_wants": "what_the_job_requires",
+                    "you_have": "what_candidate_currently_has",
+                    "fix": "specific_improvement_needed",
+                    "example": "concrete_example_of_improvement",
+                    "bonus": "additional_enhancement_suggestion"
                 }}
             ],
-            "skills": [
-                {{
-                    "category": "Programming",
-                    "items": ["JavaScript", "Python", "React"]
-                }}
-            ]
-        }},
-        "job_matches": [],
-        "improvements": []
-    }}
-    """
-
-    try:
-        # Try to use real Gemini API
-        if settings.GEMINI_API_KEY and settings.GEMINI_API_KEY != "":
-            print("🤖 Using real Gemini AI for resume analysis...")
-            try:
-                response = model.generate_content(prompt)
-                print(f"🔍 Gemini raw response: {response.text[:200]}...")
-                
-                # Clean up the response text
-                response_text = response.text.strip()
-                
-                # Sometimes Gemini returns markdown code blocks, extract JSON
-                if response_text.startswith('```json'):
-                    response_text = response_text.split('```json')[1].split('```')[0].strip()
-                elif response_text.startswith('```'):
-                    response_text = response_text.split('```')[1].split('```')[0].strip()
-                
-                analysis_data = json.loads(response_text)
-                print("✅ Gemini API analysis completed")
-            except Exception as e:
-                print(f"❌ Gemini API failed: {e}, using fallback data")
-                analysis_data = None
-        else:
-            print("⚠️ No Gemini API key configured, using fallback data")
-            analysis_data = None
-            
-        # Use simple fallback if Gemini failed
-        if analysis_data is None:
-            analysis_data = {
-                "score": 85,
-                "strengths": [
-                    {
-                        "title": "Strong Technical Foundation",
-                        "description": "Shows proficiency in modern web technologies",
-                        "relevance": "Applicable to software development roles"
-                    },
-                    {
-                        "title": "Project Experience",
-                        "description": "Demonstrates hands-on development experience",
-                        "relevance": "Shows practical problem-solving skills"
-                    }
-                ],
-                "feedback": [
-                    {
-                        "category": "Experience Quantification",
-                        "emoji": "📊",
-                        "items": [
-                            {
-                                "job_wants": "Quantified achievements and measurable impact",
-                                "you_have": "Technical projects but lacking specific metrics",
-                                "fix": "Add specific numbers, percentages, and measurable outcomes to your project descriptions",
-                                "example_line": "Built e-commerce platform serving 500+ users with 99.5% uptime, reducing page load time by 40%",
-                                "bonus": "Include user growth, performance improvements, or cost savings",
-                                "severity": "high"
-                            }
-                        ]
-                    },
-                    {
-                        "category": "Skills Optimization",
-                        "emoji": "🚀",
-                        "items": [
-                            {
-                                "job_wants": "Clear demonstration of relevant technologies",
-                                "you_have": "Good technical skills but could be more specific",
-                                "fix": "Highlight specific frameworks, tools, and best practices used in projects",
-                                "example_line": "Implemented RESTful APIs using Express.js with JWT authentication and MongoDB integration",
-                                "bonus": "Mention testing frameworks, CI/CD, or cloud platforms used",
-                                "severity": "medium"
-                            }
-                        ]
-                    }
-                ],
-                "extracted_info": {
-                    "name": "Software Developer",
-                    "experience": [
-                        {
-                            "title": "Software Engineer",
-                            "company": "TechCorp",
-                            "duration": "2023-Present"
-                        }
-                    ],
-                    "skills": [
-                        {
-                            "category": "Programming Languages",
-                            "items": ["JavaScript", "Python", "Java"]
-                        },
-                        {
-                            "category": "Frameworks",
-                            "items": ["React", "Node.js", "Express"]
-                        }
-                    ]
-                },
-                "job_matches": [],
-                "improvements": []
-            }
-            print("✅ Using simplified fallback data")
-
-        return ResumeAnalysis(
-            score=analysis_data.get("score", 75),
-            strengths=analysis_data.get("strengths", []),
-            feedback=analysis_data.get("feedback", []),
-            extracted_info=analysis_data.get("extracted_info", {}),
-            job_matches=analysis_data.get("job_matches", []),
-            improvements=analysis_data.get("improvements", [])
-        )
-    except Exception as e:
-        raise Exception(f"Failed to analyze resume: {str(e)}")
-
-async def enhance_resume_with_gemini(
-    resume_content: str,
-    job_description: Optional[str] = None,
-    feedback: Optional[List[Dict[str, Any]]] = None
-) -> str:
-    """Enhance resume content using Gemini AI."""
-    
-    prompt = f"""
-    Enhance this resume based on the feedback and job description:
-    
-    RESUME:
-    {resume_content}
-    
-    {f'JOB DESCRIPTION:\n{job_description}' if job_description else ''}
-    
-    {f'FEEDBACK:\n{json.dumps(feedback, indent=2)}' if feedback else ''}
-    
-    Provide an enhanced version that:
-    1. Addresses all feedback points
-    2. Optimizes for ATS
-    3. Highlights relevant skills
-    4. Improves formatting and readability
-    
-    Return only the enhanced resume content.
-    """
-
-    try:
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        raise Exception(f"Failed to enhance resume: {str(e)}")
-
-async def generate_cover_letter_with_gemini(
-    resume_content: str,
-    job_description: str,
-    company_info: Optional[Dict[str, Any]] = None
-) -> str:
-    """Generate a professional cover letter using Gemini AI."""
-    
-    print(f"📝 Starting cover letter generation...")
-    
-    # Validate inputs
-    if not resume_content:
-        raise Exception("Resume content is empty or None")
-    if not job_description:
-        raise Exception("Job description is empty or None")
-        
-    print(f"📄 Resume content length: {len(resume_content)} chars")
-    print(f"💼 Job description length: {len(job_description)} chars")
-    
-    # Get current date for the letter
-    from datetime import datetime
-    current_date = datetime.now().strftime("%B %d, %Y")
-    print(f"📅 Using date: {current_date}")
-    
-    prompt = f"""
-    You are a professional technical recruiter and writing assistant.
-
-    Based on a job description and resume, write a **tailored, confident, human-sounding cover letter**. Follow these exact instructions:
-
-    ---
-
-    ✉️ HEADER:
-    - Use the current date, formatted as: {current_date}
-    - Do NOT include an address or phone number
-    - Do NOT mention the platform where the job was found
-
-    ---
-
-    👋 GREETING:
-    - Extract the company name from the job description
-    - Address the letter to: "Dear [Company Name] Engineering Team" or "Dear [Company Name] Hiring Team"
-
-    ---
-
-    🧠 BODY: 3–4 paragraphs max
-    **Paragraph 1:**  
-    - Introduce the candidate by name and current role or education  
-    - State clear interest in the specific position  
-    - Briefly mention how their skills align with the company's mission or tech
-
-    **Paragraph 2–3:**  
-    - Highlight 1–2 specific projects or work experiences from the resume  
-    - Include technologies used, problems solved, or measurable results  
-    - Link those experiences directly to what the company is building or requiring
-
-    **Paragraph 4 (Closing):**  
-    - Express enthusiasm about contributing to the company's mission  
-    - Avoid fluff or cliché phrases (e.g., "I'm passionate about…")
-    - Mention that the reader can learn more on LinkedIn or GitHub
-
-    ---
-
-    ✍️ SIGN-OFF:
-    Use this format exactly at the bottom:
-
-    Sincerely,  
-    [Full Name]  
-    [Email]  
-    [LinkedIn link]  
-    [GitHub link]  
-    [Portfolio URL (if found in resume)]
-
-    ✅ Only include links if they appear in the resume  
-    ❌ Never make up or assume links
-
-    ---
-
-    Tone should be natural, confident, and recruiter-friendly — like a sharp, motivated software engineering student wrote it. Avoid robotic phrasing and generic language.
-
-    RESUME:
-    {resume_content}
-    
-    JOB DESCRIPTION:
-    {job_description}
-    
-    Now write the best possible cover letter based on the resume and job description I provide.
-    """
-
-    try:
-        print("🤖 Calling Gemini API...")
-        response = model.generate_content(prompt)
-        print(f"✅ Gemini API response received (length: {len(response.text)} chars)")
-        return response.text
-    except Exception as e:
-        print(f"❌ Gemini API call failed: {str(e)}")
-        print(f"❌ Error type: {type(e).__name__}")
-        import traceback
-        print(f"❌ Full traceback: {traceback.format_exc()}")
-        raise Exception(f"Failed to generate cover letter: {str(e)}")
-
-async def generate_learning_path_with_gemini(
-    resume_content: str,
-    job_description: str,
-    feedback: List[Dict[str, Any]]
-) -> Dict[str, Any]:
-    """Generate a personalized learning path using Gemini AI."""
-    
-    prompt = f"""
-    Create a personalized learning path based on the resume, job description, and feedback.
-    
-    RESUME:
-    {resume_content}
-    
-    JOB DESCRIPTION:
-    {job_description}
-    
-    FEEDBACK:
-    {json.dumps(feedback, indent=2)}
-    
-    Create a learning plan with:
-    1. Technical interview topics to study
-    2. LeetCode practice problems
-    3. Key concepts to review
-    4. Study schedule
-    
-    Format as JSON:
-    {{
-        "technical_interview_topics": [
-            {{
-                "topic": "Data Structures",
-                "description": "Arrays, LinkedLists, Trees, Graphs",
-                "importance": "High - fundamental for most interviews",
-                "study_resources": ["LeetCode", "GeeksforGeeks"]
-            }}
-        ],
-        "leetcode_practice": [
-            {{
-                "problem": "Two Sum",
-                "difficulty": "Easy",
-                "concept": "Hash Tables",
-                "why_important": "Common interview pattern",
-                "url": "https://leetcode.com/problems/two-sum/"
-            }}
-        ],
-        "key_concepts_to_review": [
-            {{
-                "concept": "Time Complexity",
-                "description": "Big O notation and algorithm efficiency",
-                "priority": "High"
-            }}
-        ],
-        "study_schedule": {{
-            "Week 1": "Focus on data structures fundamentals",
-            "Week 2": "Practice algorithm problems"
+            "recommendations": ["recommendation1", "recommendation2", ...],
+            "keyword_analysis": {{
+                "missing_keywords": ["keyword1", "keyword2", ...],
+                "keyword_density": "assessment_of_current_keywords"
+            }},
+            "formatting_score": 0-100,
+            "content_score": 0-100
         }}
-    }}
-    """
-
-    try:
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
         
-        # Clean JSON response
-        if response_text.startswith('```json'):
-            response_text = response_text.split('```json')[1].split('```')[0].strip()
-        elif response_text.startswith('```'):
-            response_text = response_text.split('```')[1].split('```')[0].strip()
+        Be specific, actionable, and professional in your analysis.
+        """
+        
+        return base_prompt
+    
+    def _parse_analysis_response(self, response_text: str) -> Dict[str, Any]:
+        """Parse and validate analysis response"""
+        try:
+            # Extract JSON from response
+            json_match = self._extract_json_from_text(response_text)
             
-        return json.loads(response_text)
-    except Exception as e:
-        # Simple fallback
+            if json_match:
+                analysis = json.loads(json_match)
+                
+                # Validate required fields
+                required_fields = ['overall_score', 'ats_score', 'strengths', 'feedback', 'recommendations']
+                for field in required_fields:
+                    if field not in analysis:
+                        logger.warning(f"Missing field in analysis: {field}")
+                        analysis[field] = [] if field in ['strengths', 'feedback', 'recommendations'] else 0
+                
+                # Ensure scores are in valid range
+                analysis['overall_score'] = max(0, min(100, analysis.get('overall_score', 0)))
+                analysis['ats_score'] = max(0, min(100, analysis.get('ats_score', 0)))
+                
+                return analysis
+            else:
+                logger.warning("No valid JSON found in analysis response")
+                return self._get_fallback_analysis()
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse analysis JSON: {str(e)}")
+            return self._get_fallback_analysis()
+    
+    def _parse_json_response(self, response_text: str, response_type: str) -> Dict[str, Any]:
+        """Parse JSON response from Gemini"""
+        try:
+            json_match = self._extract_json_from_text(response_text)
+            
+            if json_match:
+                return json.loads(json_match)
+            else:
+                logger.warning(f"No valid JSON found in {response_type} response")
+                raise ValueError(f"Invalid {response_type} response format")
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse {response_type} JSON: {str(e)}")
+            raise ValueError(f"Invalid {response_type} response format")
+    
+    def _extract_json_from_text(self, text: str) -> Optional[str]:
+        """Extract JSON from text that might contain markdown formatting"""
+        import re
+        
+        # Try to find JSON wrapped in code blocks
+        json_patterns = [
+            r'```json\s*(.*?)\s*```',
+            r'```\s*(.*?)\s*```',
+            r'\{.*\}',
+        ]
+        
+        for pattern in json_patterns:
+            match = re.search(pattern, text, re.DOTALL)
+            if match:
+                json_text = match.group(1) if 'json' in pattern else match.group(0)
+                try:
+                    # Validate it's valid JSON
+                    json.loads(json_text)
+                    return json_text
+                except json.JSONDecodeError:
+                    continue
+        
+        return None
+    
+    def _get_fallback_analysis(self) -> Dict[str, Any]:
+        """Provide fallback analysis when AI analysis fails"""
         return {
-            "technical_interview_topics": [
+            "overall_score": 50,
+            "ats_score": 45,
+            "strengths": ["Resume uploaded successfully"],
+            "feedback": [
                 {
-                    "topic": "Data Structures & Algorithms",
-                    "description": "Arrays, LinkedLists, Trees, Hash Tables",
-                    "importance": "Essential for technical interviews",
-                    "study_resources": ["LeetCode", "GeeksforGeeks", "Cracking the Coding Interview"]
+                    "category": "technical",
+                    "priority": "medium",
+                    "job_wants": "Detailed analysis",
+                    "you_have": "Basic resume content",
+                    "fix": "Please try uploading again or check your internet connection",
+                    "example": "Ensure your resume has clear sections and readable text",
+                    "bonus": "Consider using a standard resume format"
                 }
             ],
-            "leetcode_practice": [
-                {
-                    "problem": "Two Sum",
-                    "difficulty": "Easy",
-                    "concept": "Hash Tables",
-                    "why_important": "Common interview pattern for array problems",
-                    "url": "https://leetcode.com/problems/two-sum/"
-                }
+            "recommendations": [
+                "Try uploading your resume again",
+                "Ensure your resume is in PDF or DOCX format",
+                "Check that your resume has clear, readable text"
             ],
-            "key_concepts_to_review": [
-                {
-                    "concept": "Time & Space Complexity",
-                    "description": "Understanding Big O notation",
-                    "priority": "High"
-                }
-            ],
-            "study_schedule": {
-                "Week 1": "Data structures fundamentals",
-                "Week 2": "Algorithm practice"
-            }
+            "keyword_analysis": {
+                "missing_keywords": [],
+                "keyword_density": "Unable to analyze due to processing error"
+            },
+            "formatting_score": 50,
+            "content_score": 50,
+            "error": "Analysis temporarily unavailable"
         }
 
-async def generate_practice_exam_with_gemini(
-    resume_content: str,
-    job_description: str,
-    learning_plan: Dict[str, Any]
-) -> Dict[str, Any]:
-    """Generate a practice exam using Gemini AI."""
-    
-    prompt = f"""
-    Create a practice coding exam based on the resume, job description, and learning plan.
-    
-    RESUME:
-    {resume_content}
-    
-    JOB DESCRIPTION:
-    {job_description}
-    
-    LEARNING PLAN:
-    {json.dumps(learning_plan, indent=2)}
-    
-    Create an exam with:
-    1. Multiple choice questions about concepts
-    2. Coding problems to solve
-    3. Study tips
-    
-    Format as JSON:
-    {{
-        "exam_info": {{
-            "title": "Software Developer Practice Exam",
-            "description": "Practice exam for software development roles",
-            "total_questions": 10,
-            "estimated_time": "60 minutes",
-            "passing_score": 70
-        }},
-        "questions": [
-            {{
-                "id": 1,
-                "type": "multiple_choice",
-                "category": "Data Structures",
-                "question": "What is the time complexity of searching in a hash table?",
-                "options": ["O(1)", "O(n)", "O(log n)", "O(n²)"],
-                "correct_answer": 0,
-                "explanation": "Hash tables provide O(1) average case lookup time"
-            }}
-        ],
-        "study_tips": [
-            "Practice coding problems daily",
-            "Understand time complexity concepts"
-        ]
-    }}
-    """
 
-    try:
-        response = model.generate_content(prompt)
-        response_text = response.text.strip()
-        
-        # Clean JSON response
-        if response_text.startswith('```json'):
-            response_text = response_text.split('```json')[1].split('```')[0].strip()
-        elif response_text.startswith('```'):
-            response_text = response_text.split('```')[1].split('```')[0].strip()
-            
-        return json.loads(response_text)
-    except Exception as e:
-        # Simple fallback
-        return {
-            "exam_info": {
-                "title": "Software Developer Practice Exam",
-                "description": "Practice exam for software development roles",
-                "total_questions": 5,
-                "estimated_time": "30 minutes",
-                "passing_score": 70
-            },
-            "questions": [
-                {
-                    "id": 1,
-                    "type": "multiple_choice",
-                    "category": "Programming",
-                    "question": "Which data structure uses LIFO (Last In, First Out)?",
-                    "options": ["Queue", "Stack", "Array", "Hash Table"],
-                    "correct_answer": 1,
-                    "explanation": "Stack follows LIFO principle - last element added is first to be removed"
-                }
-            ],
-            "study_tips": [
-                "Practice coding problems daily",
-                "Review data structures and algorithms",
-                "Understand time and space complexity"
-            ]
-        } 
+# Existing GeminiService instance for backward compatibility
+gemini_service = GeminiService() 

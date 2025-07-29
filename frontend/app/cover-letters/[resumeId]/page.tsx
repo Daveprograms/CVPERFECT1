@@ -193,7 +193,7 @@ export default function CoverLetterPage() {
                 Generate a cover letter for this resume to see it here.
               </p>
               <button
-                onClick={() => router.push('/job-assistant')}
+                onClick={() => router.push('/resumes')}
                 className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90"
               >
                 Generate Cover Letter

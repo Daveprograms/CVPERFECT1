@@ -1,0 +1,24 @@
+{
+  "name": "google-careers-scraper",
+  "version": "1.0.0",
+  "description": "Playwright scraper for Google Careers internships and new grad roles",
+  "main": "google-careers-scraper.js",
+  "scripts": {
+    "scrape": "node google-careers-scraper.js",
+    "scrape:intern": "node google-careers-scraper.js --type=intern",
+    "scrape:new-grad": "node google-careers-scraper.js --type=new-grad",
+    "install-browsers": "playwright install chromium"
+  },
+  "dependencies": {
+    "playwright": "^1.40.0"
+  },
+  "keywords": [
+    "playwright",
+    "scraper",
+    "google-careers",
+    "internships",
+    "jobs"
+  ],
+  "author": "CVPerfect Team",
+  "license": "MIT"
+} 

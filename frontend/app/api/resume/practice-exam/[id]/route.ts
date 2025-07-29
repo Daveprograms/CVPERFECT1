@@ -20,7 +20,7 @@ export async function GET(
     }
     
     // Call backend API to get resume with practice exam
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/${params.id}`
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'}/api/resume/${params.id}`
     console.log('🌐 Calling backend:', backendUrl)
     
     const backendResponse = await fetch(backendUrl, {
@@ -96,7 +96,7 @@ export async function POST(
     }
     
     // Call backend API
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/practice-exam/${params.id}`
+          const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'}/api/resume/practice-exam/${params.id}`
     console.log('🌐 Calling backend:', backendUrl)
     
     const backendResponse = await fetch(backendUrl, {

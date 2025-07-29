@@ -1,10 +1,30 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: {
-    BACKEND_URL: 'http://localhost:8000',
-    NEXT_PUBLIC_BACKEND_URL: 'http://localhost:8000'
+    BACKEND_URL: 'http://127.0.0.1:8000',
+    NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:8000',
+    NEXT_PUBLIC_API_URL: 'http://127.0.0.1:8000'
   },
-  webpack: (config, { isServer }) => {
+  
+  // Performance optimizations
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
+  },
+  
+  // Image optimization
+  images: {
+    domains: ['localhost'],
+    formats: ['image/webp', 'image/avif'],
+  },
+  
+  // Compression
+  compress: true,
+  
+  // Bundle analyzer (optional)
+  // bundleAnalyzer: process.env.ANALYZE === 'true',
+  
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -34,11 +54,20 @@ const nextConfig = {
       'undici': false
     };
 
+    // Performance optimizations
+    if (!dev) {
+      // Enable tree shaking
+      config.optimization = {
+        ...config.optimization,
+        usedExports: true,
+        sideEffects: false,
+      };
+    }
+
     return config;
   },
-  experimental: {
-    serverActions: true
-  }
+  
+  // Server Actions are now enabled by default in Next.js 14
 }
 
 module.exports = nextConfig 

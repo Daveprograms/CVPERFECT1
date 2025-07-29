@@ -1,61 +1,60 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, JSON, Float
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, Text, Integer, Float, JSON, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from sqlalchemy.sql import func
+from pydantic import BaseModel
+from typing import Optional
+from ..database import Base
 import uuid
 
-from ..database import Base
 
 class Resume(Base):
     __tablename__ = "resumes"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    original_content = Column(Text)  # Base64 encoded binary content
-    content = Column(Text, nullable=True)  # Text content for processing
-    enhanced_content = Column(Text, nullable=True)  # Base64 encoded binary content
-    filename = Column(String(255), nullable=True)  # Original filename
-    job_description = Column(Text, nullable=True)
-
-    score = Column(Float, nullable=True)
-    feedback = Column(JSON, nullable=True)
-    extracted_info = Column(JSON, nullable=True)
-    job_matches = Column(JSON, nullable=True)
-    improvements = Column(JSON, nullable=True)
-    cover_letter = Column(Text, nullable=True)
-    learning_path = Column(JSON, nullable=True)
-    practice_exam = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String, nullable=False)
+    filename = Column(String, nullable=False)
+    content = Column(Text, nullable=False)
+    file_type = Column(String, nullable=False)
+    upload_date = Column(DateTime(timezone=True), server_default=func.now())
+    processing_status = Column(String, default="pending")
+    character_count = Column(Integer, default=0)
+    
     # Relationships
+    analyses = relationship("ResumeAnalysis", back_populates="resume")
+    analytics = relationship("Analytics", back_populates="resume")
     user = relationship("User", back_populates="resumes")
-    versions = relationship("ResumeVersion", back_populates="resume", cascade="all, delete-orphan")
-    analytics = relationship("Analytics", back_populates="resume", cascade="all, delete-orphan")
+
 
 class ResumeVersion(Base):
     __tablename__ = "resume_versions"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    resume_id = Column(String, ForeignKey("resumes.id"), nullable=False)
+    version_number = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_current = Column(Boolean, default=False)
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    resume_id = Column(UUID(as_uuid=True), ForeignKey("resumes.id"))
-    content = Column(Text)  # Base64 encoded binary content
-    version_number = Column(Integer)
-    created_at = Column(DateTime, default=datetime.utcnow)
 
+class ResumeAnalysis(Base):
+    __tablename__ = "resume_analyses"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    resume_id = Column(String, ForeignKey("resumes.id"), nullable=False)
+    overall_score = Column(Float, nullable=False)
+    ats_score = Column(Float, nullable=False)
+    strengths = Column(JSON, nullable=True)
+    recommendations = Column(JSON, nullable=True)
+    analysis_data = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
     # Relationships
-    resume = relationship("Resume", back_populates="versions")
+    resume = relationship("Resume", back_populates="analyses")
 
-class FeedbackHistory(Base):
-    __tablename__ = "feedback_history"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
-    resume_id = Column(UUID(as_uuid=True), ForeignKey("resumes.id"))
-    feedback_text = Column(Text)
-    score = Column(Float, nullable=True)
-    ai_analysis_version = Column(String(50), default="v1.0")
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    # Relationships
-    user = relationship("User")
-    resume = relationship("Resume") 
+# Request schema for analysis
+class ResumeAnalysisRequest(BaseModel):
+    resume_id: str
+    job_description: Optional[str] = None
+    analysis_type: str = "ai_feedback" 

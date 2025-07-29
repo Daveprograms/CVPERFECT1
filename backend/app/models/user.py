@@ -32,6 +32,17 @@ class User(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     preferences = Column(JSON, default={})
     
+    # Onboarding fields
+    onboarding_completed = Column(Boolean, default=False)
+    current_role = Column(String, nullable=True)
+    job_search_status = Column(String, nullable=True)
+    internship_date_range = Column(String, nullable=True)
+    preferred_job_types = Column(JSON, default=[])
+    top_technologies = Column(JSON, default=[])
+    help_needed = Column(JSON, default=[])
+    linkedin_url = Column(String, nullable=True)
+    github_url = Column(String, nullable=True)
+    
     # Upload tracking
     uploads_count = Column(Integer, default=0)
     last_upload_reset = Column(DateTime, default=datetime.utcnow)

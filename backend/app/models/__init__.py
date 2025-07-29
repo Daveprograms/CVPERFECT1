@@ -1,5 +1,5 @@
 from .user import User, SubscriptionType
-from .resume import Resume, ResumeVersion
+from .resume import Resume, ResumeVersion, ResumeAnalysis
 from .analytics import Analytics, ActionType
 
 __all__ = [
@@ -7,6 +7,7 @@ __all__ = [
     'SubscriptionType',
     'Resume',
     'ResumeVersion',
+    'ResumeAnalysis',
     'Analytics',
     'ActionType'
 ] 

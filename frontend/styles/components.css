@@ -1,0 +1,399 @@
+/* Component-specific styles */
+
+/* Navigation Components */
+.nav-link {
+  @apply px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200;
+}
+
+.nav-link-active {
+  @apply bg-blue-100 text-blue-700;
+}
+
+[data-theme="dark"] .nav-link-active {
+  @apply bg-blue-900 text-blue-300;
+}
+
+.nav-link-inactive {
+  @apply text-gray-600 hover:text-gray-900 hover:bg-gray-50;
+}
+
+[data-theme="dark"] .nav-link-inactive {
+  @apply text-gray-400 hover:text-gray-100 hover:bg-gray-800;
+}
+
+/* Dashboard Layout */
+.dashboard-sidebar {
+  @apply w-64 bg-white shadow-lg border-r border-gray-200;
+}
+
+[data-theme="dark"] .dashboard-sidebar {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.dashboard-main {
+  @apply flex-1 overflow-y-auto;
+}
+
+.dashboard-header {
+  @apply bg-white shadow-sm border-b border-gray-200 px-4 py-3;
+}
+
+[data-theme="dark"] .dashboard-header {
+  @apply bg-gray-800 border-gray-700;
+}
+
+/* Resume Upload Components */
+.upload-zone {
+  @apply border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors duration-200 cursor-pointer;
+}
+
+.upload-zone-active {
+  @apply border-blue-500 bg-blue-50;
+}
+
+[data-theme="dark"] .upload-zone-active {
+  @apply bg-blue-900 bg-opacity-20;
+}
+
+.upload-zone-error {
+  @apply border-red-500 bg-red-50;
+}
+
+[data-theme="dark"] .upload-zone-error {
+  @apply bg-red-900 bg-opacity-20;
+}
+
+/* Progress Components */
+.progress-bar {
+  @apply w-full bg-gray-200 rounded-full h-2.5;
+}
+
+[data-theme="dark"] .progress-bar {
+  @apply bg-gray-700;
+}
+
+.progress-fill {
+  @apply bg-blue-600 h-2.5 rounded-full transition-all duration-300;
+}
+
+.progress-indeterminate {
+  @apply bg-gradient-to-r from-blue-500 to-blue-600;
+  animation: progress-indeterminate 2s linear infinite;
+}
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Feedback Components */
+.feedback-item {
+  @apply bg-white rounded-lg border border-gray-200 p-4 mb-4 transition-all duration-200 hover:shadow-md;
+}
+
+[data-theme="dark"] .feedback-item {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.feedback-priority-high {
+  @apply border-l-4 border-red-500;
+}
+
+.feedback-priority-medium {
+  @apply border-l-4 border-yellow-500;
+}
+
+.feedback-priority-low {
+  @apply border-l-4 border-green-500;
+}
+
+.feedback-category {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.feedback-category-technical {
+  @apply bg-blue-100 text-blue-800;
+}
+
+[data-theme="dark"] .feedback-category-technical {
+  @apply bg-blue-900 text-blue-300;
+}
+
+.feedback-category-experience {
+  @apply bg-green-100 text-green-800;
+}
+
+[data-theme="dark"] .feedback-category-experience {
+  @apply bg-green-900 text-green-300;
+}
+
+.feedback-category-formatting {
+  @apply bg-purple-100 text-purple-800;
+}
+
+[data-theme="dark"] .feedback-category-formatting {
+  @apply bg-purple-900 text-purple-300;
+}
+
+/* Score Components */
+.score-circle {
+  @apply relative inline-flex items-center justify-center w-16 h-16 rounded-full;
+}
+
+.score-excellent {
+  @apply bg-green-100 text-green-700;
+}
+
+[data-theme="dark"] .score-excellent {
+  @apply bg-green-900 text-green-300;
+}
+
+.score-good {
+  @apply bg-blue-100 text-blue-700;
+}
+
+[data-theme="dark"] .score-good {
+  @apply bg-blue-900 text-blue-300;
+}
+
+.score-fair {
+  @apply bg-yellow-100 text-yellow-700;
+}
+
+[data-theme="dark"] .score-fair {
+  @apply bg-yellow-900 text-yellow-300;
+}
+
+.score-poor {
+  @apply bg-red-100 text-red-700;
+}
+
+[data-theme="dark"] .score-poor {
+  @apply bg-red-900 text-red-300;
+}
+
+/* Modal Components */
+.modal-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4;
+}
+
+.modal-content {
+  @apply bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto;
+}
+
+[data-theme="dark"] .modal-content {
+  @apply bg-gray-800;
+}
+
+.modal-header {
+  @apply px-6 py-4 border-b border-gray-200;
+}
+
+[data-theme="dark"] .modal-header {
+  @apply border-gray-700;
+}
+
+.modal-body {
+  @apply px-6 py-4;
+}
+
+.modal-footer {
+  @apply px-6 py-4 border-t border-gray-200 flex justify-end space-x-2;
+}
+
+[data-theme="dark"] .modal-footer {
+  @apply border-gray-700;
+}
+
+/* Toast Components */
+.toast {
+  @apply fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-4 min-w-[300px] max-w-md;
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+[data-theme="dark"] .toast {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.toast-success {
+  @apply border-l-4 border-green-500;
+}
+
+.toast-error {
+  @apply border-l-4 border-red-500;
+}
+
+.toast-warning {
+  @apply border-l-4 border-yellow-500;
+}
+
+.toast-info {
+  @apply border-l-4 border-blue-500;
+}
+
+/* Learning Path Components */
+.learning-step {
+  @apply bg-white rounded-lg border border-gray-200 p-4 mb-4;
+}
+
+[data-theme="dark"] .learning-step {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.learning-step-completed {
+  @apply bg-green-50 border-green-200;
+}
+
+[data-theme="dark"] .learning-step-completed {
+  @apply bg-green-900 bg-opacity-20 border-green-700;
+}
+
+.learning-resource {
+  @apply inline-flex items-center px-2 py-1 rounded text-xs font-medium mr-2 mb-2;
+}
+
+.learning-resource-course {
+  @apply bg-blue-100 text-blue-800;
+}
+
+[data-theme="dark"] .learning-resource-course {
+  @apply bg-blue-900 text-blue-300;
+}
+
+.learning-resource-article {
+  @apply bg-green-100 text-green-800;
+}
+
+[data-theme="dark"] .learning-resource-article {
+  @apply bg-green-900 text-green-300;
+}
+
+.learning-resource-video {
+  @apply bg-red-100 text-red-800;
+}
+
+[data-theme="dark"] .learning-resource-video {
+  @apply bg-red-900 text-red-300;
+}
+
+/* Practice Exam Components */
+.exam-question {
+  @apply bg-white rounded-lg border border-gray-200 p-6 mb-4;
+}
+
+[data-theme="dark"] .exam-question {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.exam-option {
+  @apply flex items-center p-3 rounded-lg border border-gray-200 mb-2 cursor-pointer hover:bg-gray-50 transition-colors duration-200;
+}
+
+[data-theme="dark"] .exam-option {
+  @apply border-gray-700 hover:bg-gray-700;
+}
+
+.exam-option-selected {
+  @apply bg-blue-50 border-blue-300;
+}
+
+[data-theme="dark"] .exam-option-selected {
+  @apply bg-blue-900 bg-opacity-20 border-blue-600;
+}
+
+.exam-option-correct {
+  @apply bg-green-50 border-green-300;
+}
+
+[data-theme="dark"] .exam-option-correct {
+  @apply bg-green-900 bg-opacity-20 border-green-600;
+}
+
+.exam-option-incorrect {
+  @apply bg-red-50 border-red-300;
+}
+
+[data-theme="dark"] .exam-option-incorrect {
+  @apply bg-red-900 bg-opacity-20 border-red-600;
+}
+
+/* Analytics Components */
+.analytics-card {
+  @apply bg-white rounded-lg shadow border border-gray-200 p-6;
+}
+
+[data-theme="dark"] .analytics-card {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.analytics-metric {
+  @apply text-2xl font-bold text-gray-900;
+}
+
+[data-theme="dark"] .analytics-metric {
+  @apply text-gray-100;
+}
+
+.analytics-label {
+  @apply text-sm text-gray-600 mt-1;
+}
+
+[data-theme="dark"] .analytics-label {
+  @apply text-gray-400;
+}
+
+.analytics-trend-up {
+  @apply text-green-600;
+}
+
+.analytics-trend-down {
+  @apply text-red-600;
+}
+
+/* Subscription Components */
+.subscription-card {
+  @apply bg-white rounded-lg shadow-lg border border-gray-200 p-6 relative;
+}
+
+[data-theme="dark"] .subscription-card {
+  @apply bg-gray-800 border-gray-700;
+}
+
+.subscription-card-featured {
+  @apply border-blue-500 transform scale-105;
+}
+
+.subscription-badge {
+  @apply absolute top-0 right-0 bg-blue-500 text-white text-xs font-medium px-2 py-1 rounded-bl-lg;
+}
+
+/* Mobile Responsive Components */
+@media (max-width: 768px) {
+  .modal-content {
+    @apply max-w-full mx-4;
+  }
+  
+  .toast {
+    @apply left-4 right-4 min-w-0;
+  }
+  
+  .dashboard-sidebar {
+    @apply w-full;
+  }
+  
+  .feedback-item {
+    @apply p-3;
+  }
+  
+  .exam-question {
+    @apply p-4;
+  }
+  
+  .analytics-card {
+    @apply p-4;
+  }
+} 

@@ -55,6 +55,7 @@ app.add_middleware(
     allow_origins=[
         os.getenv("FRONTEND_URL", "http://localhost:3004"),  # Default to port 3004 if not set
         "http://localhost:3000",  # Development port 3000
+        "http://localhost:3001",  # Development port 3001
         "http://localhost:3004",  # Development port 3004
         "https://cvperfect.com",  # Production
         "https://www.cvperfect.com",  # Production with www

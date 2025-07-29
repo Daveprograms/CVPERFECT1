@@ -132,7 +132,7 @@ export default function ResumesPage() {
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
       </DashboardLayout>
@@ -152,7 +152,7 @@ export default function ResumesPage() {
           </div>
           <div className="flex space-x-3">
             <button
-              onClick={() => router.push('/job-assistant')}
+              onClick={() => router.push('/resumes/upload')}
               className="flex items-center space-x-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90"
             >
               <Upload className="w-4 h-4" />
@@ -176,7 +176,7 @@ export default function ResumesPage() {
               Upload your first resume to get started with AI analysis and feedback.
             </p>
             <button
-              onClick={() => router.push('/job-assistant')}
+              onClick={() => router.push('/resumes/upload')}
               className="btn-primary-fallback px-6 py-3 rounded-lg"
             >
               Upload Your First Resume

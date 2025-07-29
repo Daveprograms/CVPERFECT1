@@ -3,188 +3,137 @@
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Navigation from '@/components/Navigation'
+import { 
+  Sparkles, 
+  Target, 
+  Brain, 
+  FileText, 
+  CheckCircle, 
+  ArrowRight, 
+  Star,
+  Users,
+  Zap,
+  Shield,
+  BookOpen,
+  MessageSquare,
+  TrendingUp,
+  Award,
+  Play
+} from 'lucide-react'
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background">
       <Navigation />
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-4">
-        <div className="container mx-auto max-w-5xl text-center">
+      <section className="relative pt-24 pb-20 px-4 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-purple-500/5 to-pink-500/5" />
+        <div className="relative container-narrow text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="inline-flex items-center space-x-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm font-medium mb-6">
+              <Sparkles className="h-4 w-4" />
+              <span>AI-Powered Resume Builder</span>
+            </div>
+          </motion.div>
+
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl md:text-7xl font-bold mb-6 text-foreground"
+            transition={{ delay: 0.1 }}
+            className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 text-balance"
           >
-            Create a Resume That Gets You Hired
+            Create Resumes That
+            <span className="gradient-text block">Get You Hired</span>
           </motion.h1>
+
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto"
+            className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto text-balance"
           >
-            CVPerfect is an AI-powered resume platform designed to help job seekers craft exceptional, personalized, and recruiter-optimized resumes.
+            CVPerfect uses advanced AI to analyze your resume, provide personalized feedback, and optimize it for ATS systems to maximize your job search success.
           </motion.p>
-          <motion.p
+
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="text-lg text-muted-foreground mb-12 max-w-3xl mx-auto"
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12"
           >
-            Whether you're applying for your first internship or your next senior role, CVPerfect empowers you to tell your professional story with clarity, precision, and impact.
-          </motion.p>
+            <Link
+              href="/job-assistant"
+              className="btn btn-primary text-lg px-8 py-4 group"
+            >
+              <Brain className="h-5 w-5 mr-2" />
+              Analyze My Resume
+              <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <Link
+              href="/auth/signup"
+              className="btn btn-outline text-lg px-8 py-4"
+            >
+              Start Building
+            </Link>
+          </motion.div>
+
+          {/* Social Proof */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
+            className="flex items-center justify-center space-x-8 text-sm text-muted-foreground"
           >
-            <Link
-              href="/job-assistant"
-              className="w-full sm:w-auto inline-flex items-center justify-center rounded-md bg-primary px-8 py-4 text-lg font-medium text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
-            >
-              🚀 Analyze My Resume
-            </Link>
-            <Link
-              href="/auth/signup"
-              className="w-full sm:w-auto inline-flex items-center justify-center rounded-md border border-input bg-background px-8 py-4 text-lg font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-            >
-              Create Your Resume
-            </Link>
-            <Link
-              href="/templates"
-              className="w-full sm:w-auto inline-flex items-center justify-center rounded-md border border-input bg-background px-8 py-4 text-lg font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors"
-            >
-              View Templates
-            </Link>
-          </motion.div>
-
-          {/* AI Resume Scanner Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mt-12 max-w-3xl mx-auto"
-          >
-            {/* Removed AI Resume Scanner section */}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* AI Resume Analysis Section */}
-      <section className="py-20 bg-gradient-to-r from-primary/10 to-purple-500/10">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              className="mb-12"
-            >
-              <h2 className="text-4xl font-bold mb-6">🤖 AI Resume Analysis</h2>
-              <p className="text-xl text-muted-foreground mb-8">
-                Get instant, professional feedback on your resume with our AI-powered analysis tool
-              </p>
-            </motion.div>
-            
-            <div className="grid md:grid-cols-3 gap-6 mb-12">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="p-6 bg-white/80 dark:bg-gray-800/80 rounded-xl backdrop-blur-sm"
-              >
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Instant Scoring</h3>
-                <p className="text-muted-foreground">Get a comprehensive score based on industry standards and ATS compatibility</p>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="p-6 bg-white/80 dark:bg-gray-800/80 rounded-xl backdrop-blur-sm"
-              >
-                <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Detailed Feedback</h3>
-                <p className="text-muted-foreground">Receive specific, actionable suggestions to improve your resume's impact</p>
-              </motion.div>
-              
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="p-6 bg-white/80 dark:bg-gray-800/80 rounded-xl backdrop-blur-sm"
-              >
-                <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-6 h-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Job Matching</h3>
-                <p className="text-muted-foreground">Compare your resume against specific job descriptions for better alignment</p>
-              </motion.div>
+            <div className="flex items-center space-x-2">
+              <div className="flex -space-x-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-full border-2 border-background" />
+                ))}
+              </div>
+              <span>10,000+ users</span>
             </div>
-            
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Link
-                href="/job-assistant"
-                className="inline-flex items-center justify-center rounded-md bg-primary px-12 py-4 text-xl font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 transition-all duration-200 transform hover:scale-105"
-              >
-                🚀 Analyze My Resume Now
-              </Link>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Product Section */}
-      <section className="py-20 bg-muted/50">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center mb-16">
-            <h2 className="text-4xl font-bold mb-6">🚀 Product</h2>
-            <p className="text-xl text-muted-foreground">
-              CVPerfect combines cutting-edge AI with career science to give job seekers an unfair advantage in a competitive hiring world.
-            </p>
-          </div>
-          <div className="max-w-4xl mx-auto">
-            <p className="text-lg text-muted-foreground text-center">
-              Instantly generate tailored resume feedback based on your target role, rewrite bullet points using recruiter-grade language, and optimize your resume for ATS (Applicant Tracking Systems). You can track your resume performance, experiment with different versions, and even auto-apply to jobs with a simple swipe.
-            </p>
-          </div>
+            <div className="flex items-center space-x-2">
+              <Star className="h-4 w-4 text-yellow-500 fill-current" />
+              <span>4.9/5 rating</span>
+            </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <h2 className="text-4xl font-bold text-center mb-16">🛠 Features</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-6xl mx-auto">
+      <section className="py-20 bg-muted/30">
+        <div className="container-narrow">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Everything You Need to Land Your Dream Job
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              From AI-powered analysis to personalized learning paths, we've got you covered
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
               <motion.div
                 key={feature.title}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.2 }}
-                className="p-8 rounded-2xl bg-card hover:shadow-xl transition-all duration-300"
+                transition={{ delay: index * 0.1 }}
+                className="card card-hover p-6"
               >
-                <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mb-4">
                   {feature.icon}
                 </div>
-                <h3 className="text-xl font-semibold mb-4 text-foreground">{feature.title}</h3>
+                <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
                 <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
               </motion.div>
             ))}
@@ -192,42 +141,188 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Templates Section */}
-      <section className="py-20 bg-muted/50">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <h2 className="text-4xl font-bold mb-6">🎨 Templates</h2>
-            <p className="text-xl text-muted-foreground mb-8">
-              Choose from dozens of beautifully designed, ATS-friendly resume templates tailored to industries like tech, business, healthcare, design, and more.
+      {/* How It Works */}
+      <section className="py-20">
+        <div className="container-narrow">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              How CVPerfect Works
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              Three simple steps to your perfect resume
             </p>
-            <p className="text-lg text-muted-foreground">
-              Whether you want a minimalist layout or something more creative, our templates ensure your resume not only passes ATS scans but also impresses human recruiters.
-            </p>
-            <div className="mt-12">
-              <Link
-                href="/templates"
-                className="inline-flex items-center justify-center rounded-md bg-primary px-8 py-4 text-lg font-medium text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {steps.map((step, index) => (
+              <motion.div
+                key={step.title}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.2 }}
+                className="text-center"
               >
-                Explore Templates
-              </Link>
-            </div>
+                <div className="w-16 h-16 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xl font-bold mx-auto mb-4">
+                  {index + 1}
+                </div>
+                <h3 className="text-xl font-semibold mb-3">{step.title}</h3>
+                <p className="text-muted-foreground">{step.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* AI Analysis Demo */}
+      <section className="py-20 bg-gradient-to-br from-primary/5 via-purple-500/5 to-pink-500/5">
+        <div className="container-narrow">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            className="text-center mb-12"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              AI-Powered Resume Analysis
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Get instant, professional feedback that helps you stand out from the competition
+            </p>
+          </motion.div>
+
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              className="space-y-6"
+            >
+              {analysisFeatures.map((feature, index) => (
+                <motion.div
+                  key={feature.title}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="flex items-start space-x-4"
+                >
+                  <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-1">{feature.title}</h3>
+                    <p className="text-muted-foreground text-sm">{feature.description}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              className="card p-8"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Resume Score</span>
+                  <span className="text-2xl font-bold text-primary">92%</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div className="bg-primary h-2 rounded-full" style={{ width: '92%' }} />
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>ATS Compatibility</span>
+                    <span className="text-green-600 font-medium">95%</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Content Quality</span>
+                    <span className="text-blue-600 font-medium">88%</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Keyword Optimization</span>
+                    <span className="text-purple-600 font-medium">91%</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-20">
+        <div className="container-narrow">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Loved by Job Seekers
+            </h2>
+            <p className="text-xl text-muted-foreground">
+              See what our users are saying about their success
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {testimonials.map((testimonial, index) => (
+              <motion.div
+                key={testimonial.name}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="card p-6"
+              >
+                <div className="flex items-center mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-4 w-4 text-yellow-500 fill-current" />
+                  ))}
+                </div>
+                <p className="text-muted-foreground mb-4">"{testimonial.quote}"</p>
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary to-purple-600 rounded-full" />
+                  <div>
+                    <p className="font-semibold">{testimonial.name}</p>
+                    <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-bold mb-8">Ready to Land Your Dream Job?</h2>
-          <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Join thousands of job seekers who have improved their resumes with our AI-powered builder
-          </p>
-          <Link
-            href="/auth/signup"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-8 py-4 text-lg font-medium text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+      <section className="py-20 bg-primary text-primary-foreground">
+        <div className="container-narrow text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
           >
-            Create Your Resume Now
-          </Link>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Ready to Transform Your Career?
+            </h2>
+            <p className="text-xl mb-8 opacity-90 max-w-2xl mx-auto">
+              Join thousands of job seekers who have already landed their dream jobs with CVPerfect
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link
+                href="/auth/signup"
+                className="btn bg-white text-primary hover:bg-white/90 text-lg px-8 py-4"
+              >
+                Start Building Now
+              </Link>
+              <Link
+                href="/job-assistant"
+                className="btn btn-outline border-white text-white hover:bg-white hover:text-primary text-lg px-8 py-4"
+              >
+                Try AI Analysis
+              </Link>
+            </div>
+          </motion.div>
         </div>
       </section>
     </div>
@@ -236,170 +331,85 @@ export default function LandingPage() {
 
 const features = [
   {
-    title: 'AI Resume Analysis & Scoring',
-    description: 'Get instant, detailed feedback on how well your resume matches a specific job description — no guesswork.',
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-7 w-7 text-primary"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-        />
-      </svg>
-    ),
+    title: 'AI Resume Analysis',
+    description: 'Get instant feedback on your resume with our advanced AI that analyzes ATS compatibility, content quality, and keyword optimization.',
+    icon: <Brain className="h-6 w-6 text-primary" />
   },
   {
-    title: 'Resume Version History',
-    description: 'Track edits and keep multiple resume versions for different roles.',
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-7 w-7 text-primary"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-        />
-      </svg>
-    ),
+    title: 'ATS Optimization',
+    description: 'Ensure your resume passes through Applicant Tracking Systems with our intelligent keyword matching and format optimization.',
+    icon: <Target className="h-6 w-6 text-primary" />
   },
   {
-    title: 'Learning Path Generator',
-    description: 'Missing key skills? CVPerfect recommends tailored learning resources to help you bridge the gap.',
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-7 w-7 text-primary"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-        />
-      </svg>
-    ),
+    title: 'Personalized Learning',
+    description: 'Receive customized learning paths based on your career goals and skill gaps identified by our AI.',
+    icon: <BookOpen className="h-6 w-6 text-primary" />
   },
   {
-    title: 'AI Chat Assistant',
-    description: 'Ask questions like "How can I improve this bullet?" or "Am I ready for this job?" — CVPerfect Chat gives contextual help.',
-    icon: (
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-7 w-7 text-primary"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-        />
-      </svg>
-    ),
+    title: 'Cover Letter Generator',
+    description: 'Create compelling, job-specific cover letters that complement your resume and increase your chances of getting hired.',
+    icon: <FileText className="h-6 w-6 text-primary" />
   },
+  {
+    title: 'Practice Exams',
+    description: 'Prepare for technical interviews with our AI-generated practice exams tailored to your target role and company.',
+    icon: <MessageSquare className="h-6 w-6 text-primary" />
+  },
+  {
+    title: 'Career Tracking',
+    description: 'Track your application progress, interview performance, and career growth with detailed analytics and insights.',
+    icon: <TrendingUp className="h-6 w-6 text-primary" />
+  }
 ]
 
-const handleResumeUpload = async (file: File) => {
-  const formData = new FormData();
-  formData.append('file', file);
-  
-  const jobDescription = (document.getElementById('jobDescription') as HTMLTextAreaElement)?.value;
-  if (jobDescription) {
-    formData.append('job_description', jobDescription);
+const steps = [
+  {
+    title: 'Upload Your Resume',
+    description: 'Simply upload your existing resume or start from scratch with our professional templates.'
+  },
+  {
+    title: 'Get AI Analysis',
+    description: 'Our AI analyzes your resume and provides detailed feedback on improvements and ATS optimization.'
+  },
+  {
+    title: 'Land Your Dream Job',
+    description: 'Apply with confidence knowing your resume is optimized for success in today\'s competitive job market.'
   }
+]
 
-  try {
-    // Show loading state
-    const resultsDiv = document.getElementById('analysisResults');
-    if (resultsDiv) {
-      resultsDiv.innerHTML = `
-        <div class="flex items-center justify-center p-8">
-          <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-          <span class="ml-3">Analyzing your resume...</span>
-        </div>
-      `;
-      resultsDiv.classList.remove('hidden');
-    }
-
-    // Send to backend
-    const response = await fetch('/api/resume/analyze', {
-      method: 'POST',
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error('Analysis failed');
-    }
-
-    const data = await response.json();
-    
-    // Update results
-    if (resultsDiv) {
-      resultsDiv.classList.remove('hidden');
-      // Update with actual data from the response
-      // This is just a placeholder - you'll need to update this with your actual data structure
-      resultsDiv.innerHTML = `
-        <div class="border rounded-lg p-6">
-          <h3 class="text-xl font-semibold mb-4">Analysis Results</h3>
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <span class="font-medium">Resume Score</span>
-              <span class="text-primary font-semibold">${data.score}/100</span>
-            </div>
-            <div class="h-2 bg-gray-200 rounded-full">
-              <div class="h-2 bg-primary rounded-full" style="width: ${data.score}%"></div>
-            </div>
-            <div class="space-y-2">
-              <h4 class="font-medium">Key Feedback</h4>
-              <ul class="space-y-2">
-                ${data.feedback.map((item: string) => `
-                  <li class="flex items-start">
-                    <svg class="w-5 h-5 text-primary mr-2 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>${item}</span>
-                  </li>
-                `).join('')}
-              </ul>
-            </div>
-            <div class="pt-4">
-              <a href="/resumes/upload" class="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
-                View Full Analysis
-              </a>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-  } catch (error) {
-    console.error('Error analyzing resume:', error);
-    // Show error state
-    const resultsDiv = document.getElementById('analysisResults');
-    if (resultsDiv) {
-      resultsDiv.innerHTML = `
-        <div class="text-center p-8 text-red-500">
-          <p>Failed to analyze resume. Please try again.</p>
-        </div>
-      `;
-      resultsDiv.classList.remove('hidden');
-    }
+const analysisFeatures = [
+  {
+    title: 'ATS Compatibility Score',
+    description: 'Get a detailed breakdown of how well your resume will perform in Applicant Tracking Systems.'
+  },
+  {
+    title: 'Keyword Optimization',
+    description: 'Identify missing keywords and phrases that hiring managers are looking for in your industry.'
+  },
+  {
+    title: 'Content Quality Analysis',
+    description: 'Receive feedback on your writing style, bullet points, and overall impact.'
+  },
+  {
+    title: 'Industry-Specific Insights',
+    description: 'Get tailored recommendations based on your target role and industry standards.'
   }
-}; 
+]
+
+const testimonials = [
+  {
+    quote: "CVPerfect helped me land my dream job at Google! The AI analysis was incredibly accurate and the ATS optimization made all the difference.",
+    name: "Sarah Chen",
+    role: "Senior Software Engineer"
+  },
+  {
+    quote: "I was struggling with my resume for months. CVPerfect's AI analysis gave me specific, actionable feedback that improved my interview rate by 300%.",
+    name: "Michael Rodriguez",
+    role: "Product Manager"
+  },
+  {
+    quote: "The personalized learning paths helped me fill skill gaps I didn't even know I had. Now I'm working at my dream company!",
+    name: "Emily Johnson",
+    role: "Data Scientist"
+  }
+] 

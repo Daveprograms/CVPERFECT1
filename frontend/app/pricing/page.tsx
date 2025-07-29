@@ -45,7 +45,7 @@ export default function PricingPage() {
           <PromoCodeInput />
         </motion.div>
 
-        <div className="grid md:grid-cols-4 gap-8 max-w-7xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {/* Free Plan */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -76,6 +76,10 @@ export default function PricingPage() {
                     <Check className="w-4 h-4 mr-2 text-green-500" />
                     Basic PDF export
                   </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Standard templates
+                  </li>
                 </ul>
               </CardContent>
               <CardFooter>
@@ -88,17 +92,22 @@ export default function PricingPage() {
             </Card>
           </motion.div>
 
-          {/* Basic Plan */}
+          {/* Professional Plan */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <Card className="h-full border-primary">
+            <Card className="h-full border-primary relative">
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-medium">
+                  Most Popular
+                </span>
+              </div>
               <CardHeader>
-                <CardTitle>Basic</CardTitle>
-                <CardDescription>For active job seekers</CardDescription>
-                <div className="text-3xl font-bold mt-4">$9.99<span className="text-sm font-normal text-muted-foreground">/month</span></div>
+                <CardTitle>Professional</CardTitle>
+                <CardDescription>For serious job seekers</CardDescription>
+                <div className="text-3xl font-bold mt-4">$29.99<span className="text-sm font-normal text-muted-foreground">/month</span></div>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2">
@@ -108,11 +117,27 @@ export default function PricingPage() {
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Up to 10 resume uploads
+                    Unlimited resume uploads
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Unlimited AI feedback
+                    Unlimited AI feedback & analysis
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    ATS optimization
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Cover letter generation
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Learning path generation
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Practice exam generation
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
@@ -124,57 +149,11 @@ export default function PricingPage() {
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Access to 10 resume templates
-                  </li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Link href="/auth/signup" className="w-full">
-                  <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2 w-full">
-                    Get Started
-                  </button>
-                </Link>
-              </CardFooter>
-            </Card>
-          </motion.div>
-
-          {/* Professional Plan */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-          >
-            <Card className="h-full border-primary">
-              <CardHeader>
-                <CardTitle>Professional</CardTitle>
-                <CardDescription>For serious job seekers</CardDescription>
-                <div className="text-3xl font-bold mt-4">$19.99<span className="text-sm font-normal text-muted-foreground">/month</span></div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  <li className="flex items-center">
-                    <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Everything in Basic
+                    Premium templates
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Up to 25 resume uploads
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="w-4 h-4 mr-2 text-green-500" />
-                    LinkedIn optimization
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Auto-Apply to Jobs (Coming Soon)
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Premium AI chat assistant access
-                  </li>
-                  <li className="flex items-center">
-                    <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Save multiple resume versions by job title
+                    Job application tracking
                   </li>
                 </ul>
               </CardContent>
@@ -192,7 +171,7 @@ export default function PricingPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.5 }}
           >
             <Card className="h-full">
               <CardHeader>
@@ -208,11 +187,19 @@ export default function PricingPage() {
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Up to 50 resume uploads
+                    Auto-Apply to Jobs
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Auto-Apply via Swipe
+                    Bulk Apply System
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Job Watchlist & Alerts
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Advanced Analytics Dashboard
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
@@ -220,11 +207,19 @@ export default function PricingPage() {
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
-                    Learning plan generation
+                    Custom resume templates
                   </li>
                   <li className="flex items-center">
                     <Check className="w-4 h-4 mr-2 text-green-500" />
-                    FairReject API insights for feedback loop
+                    API access for integrations
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    White-label solutions
+                  </li>
+                  <li className="flex items-center">
+                    <Check className="w-4 h-4 mr-2 text-green-500" />
+                    Dedicated support
                   </li>
                 </ul>
               </CardContent>
@@ -257,11 +252,11 @@ export default function PricingPage() {
             </div>
             <div>
               <h3 className="text-xl font-semibold mb-2">What happens after I purchase a plan?</h3>
-              <p className="text-muted-foreground">You'll get immediate access to all features included in your plan. For the Pro and Developer plans, you'll be billed monthly.</p>
+              <p className="text-muted-foreground">You'll get immediate access to all features included in your plan. You'll be billed monthly for Professional and Enterprise plans.</p>
             </div>
             <div>
               <h3 className="text-xl font-semibold mb-2">What's included in the Enterprise plan?</h3>
-              <p className="text-muted-foreground">The Enterprise plan includes API access, webhook support, custom integrations, and technical support. It's perfect for businesses and developers who want to integrate our resume analysis capabilities into their applications.</p>
+              <p className="text-muted-foreground">The Enterprise plan includes auto-apply features, bulk apply system, job watchlist, advanced analytics, API access, webhook support, custom integrations, and dedicated technical support.</p>
             </div>
             <div>
               <h3 className="text-xl font-semibold mb-2">Can I upgrade or downgrade my plan?</h3>

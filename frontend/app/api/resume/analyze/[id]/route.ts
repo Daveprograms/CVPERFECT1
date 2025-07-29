@@ -23,7 +23,7 @@ export async function POST(
     console.log('🔍 Analyzing resume:', { resumeId, hasJobDescription: !!job_description })
 
     // Call backend analyze endpoint with resume ID
-    const response = await fetch(`http://localhost:8000/api/resume/analyze/${resumeId}`, {
+    const response = await fetch(`http://localhost:8001/api/resume/analyze/${resumeId}`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

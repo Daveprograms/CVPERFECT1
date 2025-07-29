@@ -155,7 +155,7 @@ export default function PracticeExamPage() {
               No practice exam has been generated for this resume yet. Create one to test your skills.
             </p>
             <button
-              onClick={() => router.push('/job-assistant')}
+              onClick={() => router.push('/resumes')}
               className="btn-primary-fallback px-6 py-3 rounded-lg"
             >
               Generate Practice Exam

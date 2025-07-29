@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
-import { useAuth } from '@/lib/context/AuthContext'
+import { useAuth } from '@/hooks/useAuth'
 import html2canvas from 'html2canvas'
 
 interface ResumeSnapshotProps {
