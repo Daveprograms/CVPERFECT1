@@ -5,7 +5,7 @@
 ### ✅ AI/ML Integration Requirements
 
 **Use Existing Gemini Setup Only:**
-- ❌ Do NOT use Gemini Pro or upgrade API plans
+- ❌ Do NOT use Gemini Pro or upgrade API plans (using gemini-1.5-flash instead)
 - ✅ Use the existing Gemini model and API key configured earlier
 - ✅ All AI features must call the existing Gemini endpoint:
   - Resume analysis and feedback
@@ -85,7 +85,7 @@ class GeminiService:
         # Use existing API key, not Pro tier
         self.api_key = api_key
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel('gemini-pro')  # Existing model
+        self.model = genai.GenerativeModel('gemini-1.5-flash')  # Existing model
 ```
 
 ### Phase 2: Real Data Sources Implementation
@@ -296,7 +296,7 @@ async def get_user_stats(user_id: str, db: Session):
 - ✅ Database queries return real user records
 - ✅ Company data comes from live career pages
 - ✅ Exam questions sourced from real platforms
-- ✅ AI analysis uses existing Gemini (not Pro)
+- ✅ AI analysis uses existing Gemini 1.5 Flash
 
 **UI/UX Quality:**
 - ✅ Smooth animations on all interactions

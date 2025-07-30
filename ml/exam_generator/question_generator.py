@@ -28,7 +28,7 @@ class QuestionGenerator:
     def __init__(self, gemini_api_key: str):
         self.gemini_api_key = gemini_api_key
         genai.configure(api_key=gemini_api_key)
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
         self.logger = logging.getLogger(__name__)
     
     async def generate_exam(

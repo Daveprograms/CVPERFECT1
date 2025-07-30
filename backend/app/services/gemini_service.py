@@ -31,7 +31,7 @@ class GeminiService:
         genai.configure(api_key=self.api_key)
         
         # Use existing model (not Pro)
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
         
         logger.info("GeminiService initialized with existing API key")
     

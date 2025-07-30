@@ -42,7 +42,7 @@ CVPerfect is a production-ready AI-powered resume enhancement platform built wit
 
 ### ML Layer
 - **NLP**: Custom text processing with TF-IDF
-- **AI Analysis**: Google Gemini Pro
+- **AI Analysis**: Google Gemini 1.5 Flash
 - **Question Generation**: AI-powered exam generation
 - **Resume Parsing**: Custom text extraction and analysis
 

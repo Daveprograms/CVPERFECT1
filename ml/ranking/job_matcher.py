@@ -42,7 +42,7 @@ class JobMatcher:
     def __init__(self, gemini_api_key: str):
         self.gemini_api_key = gemini_api_key
         genai.configure(api_key=gemini_api_key)
-        self.model = genai.GenerativeModel('gemini-pro')  # Using existing model
+        self.model = genai.GenerativeModel('gemini-1.5-flash')  # Using existing model
         self.logger = logging.getLogger(__name__)
     
     async def match_jobs(
