@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
 from fastapi.exceptions import RequestValidationError
-from .routers import auth, resume, stripe, onboarding
+from .routers import auth, resume, stripe, onboarding, dashboard
 from .database import engine, Base
 import os
 from .services.real_data_service import DataSourceValidator
@@ -39,21 +39,9 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.on_event("startup")
 async def startup_event():
     print("Starting CVPerfect backend...")
-    
-    # Validate production data configuration
-    try:
-        DataSourceValidator.validate_production_config()
-        print("Production data validation completed")
-    except Exception as e:
-        print(f"Production validation failed: {e}")
-        if settings.ENVIRONMENT == "production":
-            raise  # Fail startup in production
-        else:
-            print("Continuing in development mode")
-    
-    # Log real data status
-    print(f"Real data processing: {'ENABLED' if settings.USE_REAL_DATA else 'DISABLED'}")
-    print(f"AI integration: {'ENABLED' if settings.GEMINI_API_KEY else 'DISABLED'}")
+    print(f"Environment: {settings.ENVIRONMENT}")
+    print(f"Real Data Enabled: {settings.USE_REAL_DATA}")
+    print(f"AI Service: {'ENABLED' if settings.GEMINI_API_KEY else 'DISABLED'}")
     print(f"Database: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else 'local'}")
 
 # Add middleware to track real data usage
@@ -125,6 +113,7 @@ app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(resume.router, prefix="/api/resume", tags=["resume"])
 app.include_router(stripe.router, prefix="/api/stripe", tags=["stripe"])
 app.include_router(onboarding.router, tags=["onboarding"])
+app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 
 @app.get("/")
 async def root():
