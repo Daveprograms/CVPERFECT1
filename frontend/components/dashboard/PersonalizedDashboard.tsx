@@ -54,14 +54,6 @@ export default function PersonalizedDashboard({ onboardingData }: PersonalizedDa
       }
     } catch (error) {
       console.error('Error fetching onboarding data:', error)
-      // Temporary mock data for development
-      setData({
-        current_role: 'junior_developer',
-        job_search_status: 'actively_looking',
-        preferred_job_types: ['Backend', 'Full Stack'],
-        top_technologies: ['React', 'Node.js', 'Python'],
-        help_needed: ['Resume Writing / Optimization', 'Auto Applying to Jobs']
-      })
     } finally {
       setLoading(false)
     }

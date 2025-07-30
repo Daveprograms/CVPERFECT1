@@ -1,9 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: {
-    BACKEND_URL: 'http://127.0.0.1:8000',
-    NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:8000',
-    NEXT_PUBLIC_API_URL: 'http://127.0.0.1:8000'
+    BACKEND_URL: 'http://127.0.0.1:8003',
+    NEXT_PUBLIC_BACKEND_URL: 'http://127.0.0.1:8003',
+    NEXT_PUBLIC_API_URL: 'http://127.0.0.1:8003'
   },
   
   // Performance optimizations

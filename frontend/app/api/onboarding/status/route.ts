@@ -15,7 +15,7 @@ export async function GET(req: Request) {
     }
 
     // Get onboarding status from backend
-    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8000'}/api/onboarding/status`, {
+    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8003'}/api/onboarding/status`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }

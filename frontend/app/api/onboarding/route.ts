@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     }
 
     // Send data to backend
-    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8000'}/api/onboarding`, {
+    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8003'}/api/onboarding`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
