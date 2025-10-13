@@ -12,22 +12,36 @@ export async function POST(req: Request) {
       )
     }
 
-    console.log('📝 Signup attempt:', { email, fullName })
+    console.log('📝 Frontend signup - calling backend registration...')
 
-    // For testing, create a test user
-    const testToken = 'test_token_' + Math.random().toString(36).substring(7)
-    
-    const user = {
-      id: '1',
-      email: email,
-      full_name: fullName,
-      subscription_type: 'PRO',
-      subscription_status: 'active'
+    // Call backend registration endpoint
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+    const response = await fetch(`${backendUrl}/api/auth/signup`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        email, 
+        password, 
+        fullName 
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      return new NextResponse(
+        JSON.stringify({ message: data.detail || 'Registration failed' }),
+        { status: response.status }
+      )
     }
+
+    console.log('✅ Backend registration successful')
 
     // Set the auth token cookie
     const cookieStore = cookies()
-    cookieStore.set('auth_token', testToken, {
+    cookieStore.set('auth_token', data.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -35,12 +49,10 @@ export async function POST(req: Request) {
       path: '/'
     })
 
-    console.log('✅ Signup successful:', { email, testToken })
-
     return NextResponse.json({
-      user,
-      token: testToken, // Include token for localStorage
-      message: 'Account created successfully'
+      user: data.user,
+      token: data.token,
+      message: data.message || 'Account created successfully'
     })
   } catch (error: any) {
     console.error('❌ Signup failed:', error)

@@ -13,16 +13,32 @@ export async function POST(request: Request) {
       )
     }
 
-    console.log('🔐 Frontend signin - using test authentication...')
+    console.log('🔐 Frontend signin - calling backend authentication...')
 
-    // For testing, accept any email/password and return a test token
-    const testToken = 'test_token_' + Math.random().toString(36).substring(7)
-    
-    console.log('✅ Test signin successful:', { email, testToken })
+    // Call backend authentication endpoint
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+    const response = await fetch(`${backendUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password }),
+    })
 
-    // Set the test auth token cookie (for server-side routes)
+    const data = await response.json()
+
+    if (!response.ok) {
+      return new NextResponse(
+        JSON.stringify({ message: data.detail || 'Authentication failed' }),
+        { status: response.status }
+      )
+    }
+
+    console.log('✅ Backend authentication successful')
+
+    // Set the auth token cookie (for server-side routes)
     const cookieStore = cookies()
-    cookieStore.set('auth_token', testToken, {
+    cookieStore.set('auth_token', data.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -33,14 +49,9 @@ export async function POST(request: Request) {
     return new NextResponse(
       JSON.stringify({ 
         redirectUrl: '/dashboard',
-        token: testToken, // Include token in response for localStorage
-        user: {
-          id: '1',
-          email: email,
-          fullName: 'Test User',
-          subscription_type: 'PRO'
-        },
-        message: 'Sign in successful'
+        token: data.token,
+        user: data.user,
+        message: data.message || 'Sign in successful'
       }),
       { status: 200 }
     )

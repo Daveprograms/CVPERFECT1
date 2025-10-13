@@ -64,6 +64,25 @@ SUBSCRIPTION_PLANS = {
     }
 }
 
+@router.get("/subscription", response_model=dict)
+async def get_subscription_info(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get user's subscription information"""
+    features = current_user.get_subscription_features()
+    
+    return {
+        "subscription_type": current_user.subscription_type.value,
+        "subscription_status": "active",
+        "can_upload": current_user.can_upload(),
+        "uploads_used": current_user.uploads_count,
+        "upload_limit": current_user.get_upload_limit(),
+        "features": features,
+        "subscription_end_date": current_user.subscription_end_date.isoformat() if current_user.subscription_end_date else None,
+        "stripe_customer_id": current_user.stripe_customer_id
+    }
+
 @router.post("/create-subscription", response_model=PaymentIntentResponse)
 async def create_subscription(
     subscription_data: SubscriptionCreate,

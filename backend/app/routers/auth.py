@@ -272,6 +272,20 @@ async def create_test_user(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create test user: {str(e)}")
 
+@router.get("/me", response_model=Dict)
+async def get_current_user_info(current_user: User = Depends(get_current_user)):
+    """Get current user information"""
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "fullName": current_user.full_name,
+        "subscription_type": current_user.subscription_type.value,
+        "subscription_status": "active",
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+        "onboarding_completed": current_user.onboarding_completed
+    }
+
 @router.get("/subscription-status", response_model=dict)
 async def get_subscription_status(current_user: User = Depends(get_current_user)):
     """Get user's subscription status with upload limits and features"""

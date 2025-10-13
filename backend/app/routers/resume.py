@@ -109,7 +109,7 @@ async def upload_resume(
 async def analyze_resume(
     resume_id: str,
     request: Optional[dict] = None,
-    current_user: User = Depends(get_current_user_test),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -211,7 +211,7 @@ async def analyze_resume(
 async def enhance_resume(
     resume_id: str,
     job_description: Optional[str] = None,
-    current_user: User = Depends(get_current_user_test),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     # Get resume

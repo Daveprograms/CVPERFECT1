@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
 from fastapi.exceptions import RequestValidationError
-from .routers import auth, resume, stripe, onboarding, dashboard
+from .routers import auth, resume, stripe, onboarding, dashboard, billing
 from .database import engine, Base
 import os
 from .services.real_data_service import DataSourceValidator
@@ -112,6 +112,7 @@ async def health_check():
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(resume.router, prefix="/api/resume", tags=["resume"])
 app.include_router(stripe.router, prefix="/api/stripe", tags=["stripe"])
+app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 app.include_router(onboarding.router, tags=["onboarding"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 

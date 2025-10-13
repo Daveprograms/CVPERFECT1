@@ -42,7 +42,8 @@ export async function POST(req: Request) {
     console.log('6. Sending request to backend...')
 
     // Forward the request to the backend
-    const response = await fetch('http://localhost:8001/api/resume/upload', {
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+    const response = await fetch(`${backendUrl}/api/resume/upload`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`

@@ -19,7 +19,7 @@ class ApiService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8003';
+    this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   }
 
   private async request<T>(
@@ -206,18 +206,18 @@ class ApiService {
 
   // Subscription methods
   async getSubscriptionInfo(): Promise<APIResponse<SubscriptionInfo>> {
-    return this.request('/api/user/subscription');
+    return this.request('/api/billing/subscription');
   }
 
   async createCheckoutSession(priceId: string): Promise<APIResponse<{ checkout_url: string }>> {
-    return this.request('/api/stripe/create-checkout-session', {
+    return this.request('/api/billing/create-checkout-session', {
       method: 'POST',
       body: JSON.stringify({ price_id: priceId }),
     });
   }
 
   async cancelSubscription(): Promise<APIResponse<null>> {
-    return this.request('/api/cancel-subscription', {
+    return this.request('/api/billing/cancel-subscription', {
       method: 'POST',
     });
   }

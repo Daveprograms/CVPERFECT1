@@ -13,20 +13,30 @@ export async function GET() {
       )
     }
 
-    console.log('🔐 Auth check - token found:', token.substring(0, 20) + '...')
+    console.log('🔐 Frontend auth check - calling backend validation...')
 
-    // For now, return test user data
-    // In production, this would validate the token with Firebase/backend
-    const user = {
-      id: '1',
-      email: 'test@example.com',
-      full_name: 'Test User',
-      subscription_type: 'PRO',
-      subscription_status: 'active'
+    // Call backend to validate token and get user info
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
+    const response = await fetch(`${backendUrl}/api/auth/me`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      return new NextResponse(
+        JSON.stringify({ message: 'Authentication failed' }),
+        { status: response.status }
+      )
     }
 
+    const data = await response.json()
+    console.log('✅ Backend auth validation successful')
+
     return NextResponse.json({ 
-      user,
+      user: data,
       message: 'Authenticated' 
     })
   } catch (error) {
