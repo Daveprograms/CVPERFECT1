@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import '@/styles/components.css'
+import '@/styles/utilities.css'
 import { Providers } from '@/components/providers'
 import FooterWrapper from '@/components/FooterWrapper'
 import ErrorBoundary from '@/components/ErrorBoundary'
