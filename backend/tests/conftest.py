@@ -4,12 +4,30 @@ Shared test fixtures and configuration for backend tests
 """
 
 import os
+import sys
+
+# Set test environment variables BEFORE importing app
+os.environ["ENVIRONMENT"] = "testing"
+os.environ["DATABASE_URL"] = "sqlite:///./test.db"
+os.environ["FIREBASE_CREDENTIALS_PATH"] = ""  # Empty to skip Firebase init
+os.environ["GEMINI_API_KEY"] = "test-key"
+os.environ["REDIS_ENABLED"] = "false"
+os.environ["STRIPE_SECRET_KEY"] = "sk_test_xxx"
+os.environ["STRIPE_WEBHOOK_SECRET"] = "whsec_test_xxx"
+
 import pytest
 from typing import Generator
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from unittest.mock import Mock, patch
+
+# Mock Firebase before importing app
+sys.modules['firebase_admin'] = Mock()
+sys.modules['firebase_admin.credentials'] = Mock()
+sys.modules['firebase_admin.auth'] = Mock()
+sys.modules['firebase_admin.firestore'] = Mock()
 
 # Import app and database
 from app.main import app

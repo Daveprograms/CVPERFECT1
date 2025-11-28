@@ -5,22 +5,41 @@ from ..models import User
 from ..models.user import SubscriptionType
 from ..schemas import UserCreate, UserResponse, UserLogin
 from ..schemas.auth import DeveloperCodeCreate
-import firebase_admin
-from firebase_admin import auth, credentials
 import os
 from dotenv import load_dotenv
-from firebase_admin.exceptions import FirebaseError
 from typing import Dict, Optional
 import requests
 
 load_dotenv()
 
-# Initialize Firebase Admin if not already initialized
+# Try to import Firebase, but don't fail if it's not available (for testing)
 try:
-    firebase_admin.get_app()
-except ValueError:
-    cred = credentials.Certificate(os.getenv('FIREBASE_CREDENTIALS_PATH'))
-    firebase_admin.initialize_app(cred)
+    import firebase_admin
+    from firebase_admin import credentials, auth as firebase_auth
+    from firebase_admin.exceptions import FirebaseError
+    FIREBASE_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    FIREBASE_AVAILABLE = False
+    firebase_admin = None
+    credentials = None
+    firebase_auth = None
+    FirebaseError = Exception  # Fallback exception class
+
+# Initialize Firebase Admin if available and credentials provided
+if FIREBASE_AVAILABLE and os.getenv('FIREBASE_CREDENTIALS_PATH'):
+    try:
+        firebase_admin.get_app()
+    except (ValueError, AttributeError): # Added AttributeError for cases where app might not be initialized but get_app() is called
+        try:
+            cred = credentials.Certificate(os.getenv('FIREBASE_CREDENTIALS_PATH'))
+            firebase_admin.initialize_app(cred)
+        except Exception as e:
+            print(f"Warning: Could not initialize Firebase: {e}")
+            FIREBASE_AVAILABLE = False
+elif not FIREBASE_AVAILABLE:
+    print("Firebase not available - running in test mode")
+else:
+    print("No Firebase credentials found. Skipping Firebase Admin initialization.")
 
 router = APIRouter()
 

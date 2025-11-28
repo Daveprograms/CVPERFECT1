@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
 from fastapi.exceptions import RequestValidationError
-from .routers import auth, resume, stripe, onboarding, dashboard, billing
+from .routers import auth, resume, onboarding, dashboard, billing, analytics
 from .database import engine, Base
 import os
 from .services.real_data_service import DataSourceValidator
@@ -26,14 +26,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add rate limiting middleware
+from .middleware.rate_limit import RateLimitMiddleware
+app.add_middleware(RateLimitMiddleware, requests_per_minute=100)
+
+from .core.error_handlers import (
+    cvperfect_exception_handler,
+    http_exception_handler,
+    validation_exception_handler,
+    general_exception_handler
+)
+from .core.exceptions import CVPerfectException
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 # Add global validation error handler
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    print(f"Validation error for {request.url}: {exc.errors()}")
-    return JSONResponse(
-        status_code=422,
-        content={"detail": exc.errors(), "body": (await request.body()).decode(errors='replace')},
-    )
+app.add_exception_handler(CVPerfectException, cvperfect_exception_handler)
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
 
 # Validate production configuration on startup
 @app.on_event("startup")
@@ -111,10 +121,10 @@ async def health_check():
 # Include routers
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(resume.router, prefix="/api/resume", tags=["resume"])
-app.include_router(stripe.router, prefix="/api/stripe", tags=["stripe"])
 app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 app.include_router(onboarding.router, tags=["onboarding"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
+app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 
 @app.get("/")
 async def root():
