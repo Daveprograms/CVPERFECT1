@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exception_handlers import RequestValidationError
 from fastapi.exceptions import RequestValidationError
-from .routers import auth, resume, onboarding, dashboard, billing, analytics
+from .routers import auth, resume, onboarding, dashboard, billing, analytics, applications, jobs
 from .database import engine, Base
 import os
 from .services.real_data_service import DataSourceValidator
@@ -125,6 +125,8 @@ app.include_router(billing.router, prefix="/api/billing", tags=["billing"])
 app.include_router(onboarding.router, tags=["onboarding"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
+app.include_router(applications.router, prefix="/api/applications", tags=["applications"])
+app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 
 @app.get("/")
 async def root():

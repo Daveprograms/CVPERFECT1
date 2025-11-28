@@ -50,6 +50,7 @@ class User(Base):
     # Relationships
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")
     analytics = relationship("Analytics", back_populates="user", cascade="all, delete-orphan")
+    job_applications = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
 
     def get_upload_limit(self):
         """Get the upload limit for the user's subscription type"""

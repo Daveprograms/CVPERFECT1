@@ -320,6 +320,61 @@ class GeminiService:
             logger.error(f"LinkedIn optimization failed: {str(e)}")
             raise
     
+    async def match_resume_to_job(
+        self,
+        resume_content: str,
+        job_description: str,
+        job_title: str = None,
+        company_name: str = None
+    ) -> Dict[str, Any]:
+        """
+        Match resume to job description and provide detailed analysis
+        Returns match score and recommendations
+        """
+        try:
+            match_prompt = f"""
+            Analyze how well this resume matches the job requirements and provide a detailed assessment.
+            
+            RESUME:
+            {resume_content}
+            
+            JOB DESCRIPTION:
+            {job_description}
+            
+            {f"JOB TITLE: {job_title}" if job_title else ""}
+            {f"COMPANY: {company_name}" if company_name else ""}
+            
+            Provide a JSON response with this structure:
+            {{
+                "match_score": 0-100,
+                "strengths": ["strength1", "strength2", ...],
+                "gaps": ["gap1", "gap2", ...],
+                "recommendations": ["recommendation1", "recommendation2", ...],
+                "overall_assessment": "detailed_assessment_paragraph",
+                "key_skills_matched": ["skill1", "skill2", ...],
+                "missing_skills": ["skill1", "skill2", ...]
+            }}
+            
+            Be specific and actionable in your analysis.
+            The match_score should reflect how well the candidate's experience and skills align with the job requirements.
+            """
+            
+            response = self.model.generate_content(match_prompt)
+            match_text = response.text.strip()
+            
+            # Parse JSON response
+            match_result = self._parse_json_response(match_text, "job match")
+            
+            # Import here to avoid circular dependency
+            from ..schemas.job import JobMatchResponse
+            
+            # Validate and return as JobMatchResponse
+            return JobMatchResponse(**match_result)
+            
+        except Exception as e:
+            logger.error(f"Job matching failed: {str(e)}")
+            raise
+    
     def _create_resume_analysis_prompt(self, resume_text: str, job_description: str = None) -> str:
         """Create comprehensive resume analysis prompt"""
         

@@ -1,6 +1,8 @@
 from .user import User, SubscriptionType
 from .resume import Resume, ResumeVersion, ResumeAnalysis
 from .analytics import Analytics, ActionType
+from .job_application import JobApplication, ApplicationStatus
+from .job import Job, JobType, JobSource
 
 __all__ = [
     'User',
@@ -9,5 +11,10 @@ __all__ = [
     'ResumeVersion',
     'ResumeAnalysis',
     'Analytics',
-    'ActionType'
+    'ActionType',
+    'JobApplication',
+    'ApplicationStatus',
+    'Job',
+    'JobType',
+    'JobSource'
 ] 
