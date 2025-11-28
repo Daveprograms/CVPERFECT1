@@ -375,6 +375,182 @@ class GeminiService:
             logger.error(f"Job matching failed: {str(e)}")
             raise
     
+    async def generate_interview_questions(
+        self,
+        job_title: str,
+        company_name: str = None,
+        resume_content: str = None,
+        question_type: str = None,
+        difficulty: str = "medium",
+        count: int = 5
+    ) -> List[Dict[str, Any]]:
+        """
+        Generate tailored interview questions
+        """
+        try:
+            questions_prompt = f"""
+            Generate {count} interview questions for a {job_title} position.
+            
+            {f"COMPANY: {company_name}" if company_name else ""}
+            {f"CANDIDATE RESUME: {resume_content[:1000]}" if resume_content else ""}
+            {f"QUESTION TYPE: {question_type}" if question_type else "Mix of technical and behavioral"}
+            DIFFICULTY: {difficulty}
+            
+            Provide a JSON response with this structure:
+            {{
+                "questions": [
+                    {{
+                        "question_text": "question",
+                        "question_type": "technical|behavioral|situational|system_design|coding",
+                        "difficulty": "easy|medium|hard",
+                        "category": "category_name",
+                        "hints": ["hint1", "hint2"],
+                        "sample_answer": "example_answer_outline"
+                    }}
+                ]
+            }}
+            
+            Make questions specific, relevant, and challenging.
+            """
+            
+            response = self.model.generate_content(questions_prompt)
+            questions_text = response.text.strip()
+            
+            result = self._parse_json_response(questions_text, "interview questions")
+            
+            logger.info(f"Generated {len(result.get('questions', []))} interview questions")
+            return result.get('questions', [])
+            
+        except Exception as e:
+            logger.error(f"Question generation failed: {str(e)}")
+            raise
+    
+    async def evaluate_interview_answer(
+        self,
+        question: str,
+        answer: str,
+        question_type: str,
+        job_title: str = None
+    ) -> Dict[str, Any]:
+        """
+        Evaluate an interview answer and provide feedback
+        """
+        try:
+            evaluation_prompt = f"""
+            Evaluate this interview answer and provide detailed feedback.
+            
+            QUESTION: {question}
+            QUESTION TYPE: {question_type}
+            {f"JOB ROLE: {job_title}" if job_title else ""}
+            
+            CANDIDATE'S ANSWER:
+            {answer}
+            
+            Provide a JSON response with:
+            {{
+                "score": 0-100,
+                "strengths": ["strength1", "strength2"],
+                "improvements": ["improvement1", "improvement2"],
+                "detailed_feedback": "comprehensive_feedback_paragraph",
+                "suggested_answer": "better_answer_example"
+            }}
+            
+            Be constructive, specific, and actionable in your feedback.
+            """
+            
+            response = self.model.generate_content(evaluation_prompt)
+            evaluation_text = response.text.strip()
+            
+            result = self._parse_json_response(evaluation_text, "answer evaluation")
+            
+            logger.info(f"Evaluated answer with score: {result.get('score', 0)}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Answer evaluation failed: {str(e)}")
+            raise
+    
+    async def generate_interview_tips(
+        self,
+        job_role: str,
+        company_name: str = None
+    ) -> Dict[str, Any]:
+        """
+        Generate interview tips for a specific role
+        """
+        try:
+            tips_prompt = f"""
+            Provide comprehensive interview tips for a {job_role} position.
+            {f"COMPANY: {company_name}" if company_name else ""}
+            
+            Provide a JSON response with:
+            {{
+                "general_tips": ["tip1", "tip2", ...],
+                "technical_tips": ["tip1", "tip2", ...],
+                "behavioral_tips": ["tip1", "tip2", ...],
+                "common_questions": ["question1", "question2", ...],
+                "preparation_checklist": ["item1", "item2", ...]
+            }}
+            
+            Be practical and specific to the role.
+            """
+            
+            response = self.model.generate_content(tips_prompt)
+            tips_text = response.text.strip()
+            
+            result = self._parse_json_response(tips_text, "interview tips")
+            
+            logger.info(f"Generated interview tips for {job_role}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Tips generation failed: {str(e)}")
+            raise
+    
+    async def generate_company_prep(
+        self,
+        company_name: str,
+        job_role: str = None
+    ) -> Dict[str, Any]:
+        """
+        Generate company-specific interview preparation
+        """
+        try:
+            company_prompt = f"""
+            Provide company-specific interview preparation for {company_name}.
+            {f"POSITION: {job_role}" if job_role else ""}
+            
+            Provide a JSON response with:
+            {{
+                "company_overview": "brief_overview",
+                "culture_insights": ["insight1", "insight2", ...],
+                "interview_process": ["step1", "step2", ...],
+                "common_questions": ["question1", "question2", ...],
+                "tips": ["tip1", "tip2", ...],
+                "resources": [
+                    {{
+                        "title": "resource_title",
+                        "url": "url_if_available",
+                        "description": "description"
+                    }}
+                ]
+            }}
+            
+            Focus on publicly available information and general insights.
+            """
+            
+            response = self.model.generate_content(company_prompt)
+            company_text = response.text.strip()
+            
+            result = self._parse_json_response(company_text, "company preparation")
+            
+            logger.info(f"Generated company prep for {company_name}")
+            return result
+            
+        except Exception as e:
+            logger.error(f"Company prep generation failed: {str(e)}")
+            raise
+    
     def _create_resume_analysis_prompt(self, resume_text: str, job_description: str = None) -> str:
         """Create comprehensive resume analysis prompt"""
         

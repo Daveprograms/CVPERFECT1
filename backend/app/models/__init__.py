@@ -3,6 +3,8 @@ from .resume import Resume, ResumeVersion, ResumeAnalysis
 from .analytics import Analytics, ActionType
 from .job_application import JobApplication, ApplicationStatus
 from .job import Job, JobType, JobSource
+from .interview_session import InterviewSession, SessionType, SessionStatus
+from .interview_question import InterviewQuestion, QuestionType, QuestionDifficulty
 
 __all__ = [
     'User',
@@ -16,5 +18,11 @@ __all__ = [
     'ApplicationStatus',
     'Job',
     'JobType',
-    'JobSource'
+    'JobSource',
+    'InterviewSession',
+    'SessionType',
+    'SessionStatus',
+    'InterviewQuestion',
+    'QuestionType',
+    'QuestionDifficulty'
 ] 
