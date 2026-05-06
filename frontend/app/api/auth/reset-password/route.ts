@@ -1,26 +1,34 @@
 import { NextResponse } from 'next/server'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
+import { errorMessageFromResponse } from '@/lib/api/errors'
 
 export async function POST(req: Request) {
   try {
     const { email } = await req.json()
-    if (!email) {
-      return new NextResponse('Email is required', { status: 400 })
+    if (!email || typeof email !== 'string') {
+      return NextResponse.json(
+        { success: false, error: 'Email is required' },
+        { status: 400 }
+      )
     }
 
-    const response = await fetch(`${process.env.BACKEND_URL}/api/auth/reset-password`, {
+    const response = await fetchBackend('/api/auth/reset-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ email }),
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.message)
+      const msg = await errorMessageFromResponse(response)
+      return NextResponse.json({ success: false, error: msg }, { status: response.status })
     }
 
-    return NextResponse.json({ success: true })
-  } catch (error: any) {
+    const data = await response.json().catch(() => ({ success: true }))
+    return NextResponse.json(data)
+  } catch (error: unknown) {
     console.error('Reset password error:', error)
-    return new NextResponse(error.message, { status: 500 })
+    const message =
+      error instanceof Error ? error.message : 'Password reset failed'
+    return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
 } 
