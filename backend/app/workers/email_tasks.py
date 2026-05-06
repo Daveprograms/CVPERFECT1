@@ -4,9 +4,6 @@ Background tasks for sending emails and notifications
 """
 
 import logging
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from typing import Dict, Any, List, Optional
 from celery import Task
 from sqlalchemy.orm import Session
@@ -15,6 +12,7 @@ from .celery_app import celery_app
 from ..database import SessionLocal
 from ..models.user import User
 from ..core.config import settings
+from ..services.email_delivery import send_email_smtp, send_password_reset_email_now
 
 logger = logging.getLogger(__name__)
 
@@ -28,44 +26,6 @@ class EmailTask(Task):
     
     def run(self, db: Session, *args, **kwargs):
         raise NotImplementedError
-
-
-def send_email_smtp(
-    to_email: str,
-    subject: str,
-    html_content: str,
-    text_content: str = None
-) -> bool:
-    """Send email using SMTP"""
-    
-    try:
-        # Create message
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = settings.EMAIL_FROM
-        msg['To'] = to_email
-        
-        # Add text content
-        if text_content:
-            text_part = MIMEText(text_content, 'plain')
-            msg.attach(text_part)
-        
-        # Add HTML content
-        html_part = MIMEText(html_content, 'html')
-        msg.attach(html_part)
-        
-        # Send email
-        with smtplib.SMTP(settings.EMAIL_HOST, settings.EMAIL_PORT) as server:
-            server.starttls()
-            server.login(settings.EMAIL_USERNAME, settings.EMAIL_PASSWORD)
-            server.send_message(msg)
-        
-        logger.info(f"Email sent successfully to {to_email}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Failed to send email to {to_email}: {str(e)}")
-        return False
 
 
 @celery_app.task(bind=True, base=EmailTask)
@@ -268,56 +228,16 @@ def send_analysis_complete_email(
 
 @celery_app.task(bind=True)
 def send_password_reset_email(
-    self, 
-    email: str, 
-    reset_token: str
+    self,
+    email: str,
+    reset_token: str,
 ) -> Dict[str, Any]:
-    """Send password reset email"""
-    
+    """Send password reset email (background worker)."""
     try:
-        subject = "Reset Your CVPerfect Password"
-        reset_url = f"{settings.FRONTEND_URL}/auth/reset-password?token={reset_token}"
-        
-        html_content = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                <div style="text-align: center; margin-bottom: 30px;">
-                    <h1 style="color: #3b82f6;">Password Reset Request</h1>
-                </div>
-                
-                <p>You requested a password reset for your CVPerfect account.</p>
-                
-                <div style="background-color: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-                    <p style="margin: 0; color: #92400e;">
-                        <strong>Security Notice:</strong> This link expires in 1 hour for your security.
-                    </p>
-                </div>
-                
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="{reset_url}" 
-                       style="background-color: #3b82f6; color: white; padding: 12px 24px; 
-                              text-decoration: none; border-radius: 6px; display: inline-block;">
-                        Reset Password
-                    </a>
-                </div>
-                
-                <p>If you didn't request this password reset, you can safely ignore this email.</p>
-                
-                <p>Best regards,<br>The CVPerfect Team</p>
-            </div>
-        </body>
-        </html>
-        """
-        
-        success = send_email_smtp(email, subject, html_content)
-        
-        if success:
+        if send_password_reset_email_now(email, reset_token):
             logger.info(f"Password reset email sent to {email}")
             return {"status": "success", "email": email}
-        else:
-            raise Exception("Failed to send email")
-            
+        raise RuntimeError("Failed to send email")
     except Exception as e:
         logger.error(f"Password reset email failed for {email}: {str(e)}")
         self.retry(countdown=300, max_retries=3)

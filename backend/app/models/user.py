@@ -21,7 +21,6 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     full_name = Column(String)
-    firebase_uid = Column(String, unique=True, index=True, nullable=True)
     stripe_customer_id = Column(String, unique=True, index=True, nullable=True)
     subscription_type = Column(Enum(SubscriptionType), default=SubscriptionType.FREE)
     remaining_enhancements = Column(Integer, default=0)  # For one-time users
@@ -30,22 +29,25 @@ class User(Base):
     is_superuser = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    preferences = Column(JSON, default={})
+    preferences = Column(JSON, default=dict)
     
     # Onboarding fields
     onboarding_completed = Column(Boolean, default=False)
     current_role = Column(String, nullable=True)
     job_search_status = Column(String, nullable=True)
     internship_date_range = Column(String, nullable=True)
-    preferred_job_types = Column(JSON, default=[])
-    top_technologies = Column(JSON, default=[])
-    help_needed = Column(JSON, default=[])
+    preferred_job_types = Column(JSON, default=list)
+    top_technologies = Column(JSON, default=list)
+    help_needed = Column(JSON, default=list)
     linkedin_url = Column(String, nullable=True)
     github_url = Column(String, nullable=True)
     
     # Upload tracking
     uploads_count = Column(Integer, default=0)
     last_upload_reset = Column(DateTime, default=datetime.utcnow)
+
+    password_reset_token = Column(String, nullable=True, index=True)
+    password_reset_expires = Column(DateTime, nullable=True)
 
     # Relationships
     resumes = relationship("Resume", back_populates="user", cascade="all, delete-orphan")

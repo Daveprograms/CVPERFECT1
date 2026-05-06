@@ -1,10 +1,17 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.exception_handlers import RequestValidationError
 from fastapi.exceptions import RequestValidationError
-from .routers import auth, resume, onboarding, dashboard, billing, analytics, applications, jobs, interview
-from .database import engine, Base
+import logging
+
+from .routes import auth, resume, onboarding, dashboard, billing, analytics, applications, jobs, interview
+from .routes import chat, settings as settings_router, watchlist
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+)
+from .database import engine
 import os
 from .services.real_data_service import DataSourceValidator
 from datetime import datetime
@@ -12,17 +19,30 @@ from sqlalchemy import text
 from .database import SessionLocal
 from .core.config import settings
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Schema is managed exclusively with Alembic (`alembic upgrade head`). See MIGRATIONS.md.
 
 app = FastAPI(title="CVPerfect API")
 
-# Configure CORS
+# CORS: explicit origins in production; dev allows local Next.js ports
+_allowed_origins = list(
+    dict.fromkeys(
+        filter(
+            None,
+            [
+                settings.FRONTEND_URL,
+                os.getenv("FRONTEND_URL"),
+                "http://localhost:3000",
+                "http://127.0.0.1:3000",
+            ],
+        )
+    )
+)
+_allow_cors = _allowed_origins if settings.ENVIRONMENT == "production" else (_allowed_origins or ["*"])
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("FRONTEND_URL")],
+    allow_origins=_allow_cors,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -52,7 +72,25 @@ async def startup_event():
     print(f"Environment: {settings.ENVIRONMENT}")
     print(f"Real Data Enabled: {settings.USE_REAL_DATA}")
     print(f"AI Service: {'ENABLED' if settings.GEMINI_API_KEY else 'DISABLED'}")
-    print(f"Database: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else 'local'}")
+    db_host = (
+        settings.DATABASE_URL.split("@")[-1]
+        if settings.DATABASE_URL and "@" in settings.DATABASE_URL
+        else "not configured"
+    )
+    print(f"Database target: {db_host}")
+    try:
+        db = SessionLocal()
+        db.execute(text("SELECT 1"))
+        db.close()
+        print("Database connectivity: OK")
+    except Exception as e:
+        err_preview = str(e).replace("\n", " ")[:240]
+        print("Database connectivity: FAILED — fix DATABASE_URL in backend/.env, then restart.")
+        print(f"  Details: {err_preview}")
+        print(
+            "  Hint: Supabase → Settings → Database → copy the current pooler URI; "
+            "ensure the project is not paused."
+        )
 
 # Add middleware to track real data usage
 @app.middleware("http")
@@ -128,6 +166,9 @@ app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"]
 app.include_router(applications.router, prefix="/api/applications", tags=["applications"])
 app.include_router(jobs.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(interview.router, prefix="/api/interview", tags=["interview"])
+app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
+app.include_router(settings_router.router, prefix="/api/settings", tags=["settings"])
+app.include_router(watchlist.router, prefix="/api/watchlist", tags=["watchlist"])
 
 @app.get("/")
 async def root():

@@ -11,6 +11,10 @@ interface AuthContextType extends AuthState {
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
+  completePasswordReset: (
+    token: string,
+    password: string
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,26 +25,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading: true,
     isAuthenticated: false,
   });
-  
+
   const router = useRouter();
 
-  // Initialize auth state on mount
   useEffect(() => {
     initializeAuth();
   }, []);
 
   const initializeAuth = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        setAuthState({
-          user: null,
-          isLoading: false,
-          isAuthenticated: false,
-        });
-        return;
-      }
-
       const response = await apiService.getCurrentUser();
       if (response.success && response.data) {
         setAuthState({
@@ -49,17 +42,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           isAuthenticated: true,
         });
       } else {
-        // Token is invalid, remove it
-        localStorage.removeItem('auth_token');
         setAuthState({
           user: null,
           isLoading: false,
           isAuthenticated: false,
         });
       }
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      localStorage.removeItem('auth_token');
+    } catch {
       setAuthState({
         user: null,
         isLoading: false,
@@ -70,73 +59,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     try {
-      setAuthState(prev => ({ ...prev, isLoading: true }));
-      
+      setAuthState((prev) => ({ ...prev, isLoading: true }));
+
       const response = await apiService.login(email, password);
-      
-      if (response.success && response.data) {
-        // Store token
-        localStorage.setItem('auth_token', response.data.access_token);
-        
-        // Update auth state
+
+      if (response.success && response.data?.user) {
         setAuthState({
           user: response.data.user,
           isLoading: false,
           isAuthenticated: true,
         });
-
         return { success: true };
-      } else {
-        setAuthState(prev => ({ ...prev, isLoading: false }));
-        return { 
-          success: false, 
-          error: response.error || 'Login failed' 
-        };
       }
+
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      return {
+        success: false,
+        error: response.error || 'Login failed',
+      };
     } catch (error) {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Login failed' 
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Login failed',
       };
     }
   }, []);
 
-  const register = useCallback(async (userData: { email: string; password: string; full_name: string }) => {
-    try {
-      setAuthState(prev => ({ ...prev, isLoading: true }));
-      
-      const response = await apiService.register(userData);
-      
-      if (response.success) {
-        // Auto-login after successful registration
-        const loginResult = await login(userData.email, userData.password);
-        return loginResult;
-      } else {
-        setAuthState(prev => ({ ...prev, isLoading: false }));
-        return { 
-          success: false, 
-          error: response.error || 'Registration failed' 
+  const register = useCallback(
+    async (userData: { email: string; password: string; full_name: string }) => {
+      try {
+        setAuthState((prev) => ({ ...prev, isLoading: true }));
+
+        const response = await apiService.register(userData);
+
+        if (response.success && response.data?.user) {
+          setAuthState({
+            user: response.data.user,
+            isLoading: false,
+            isAuthenticated: true,
+          });
+          return { success: true };
+        }
+
+        setAuthState((prev) => ({ ...prev, isLoading: false }));
+        return {
+          success: false,
+          error: response.error || 'Registration failed',
+        };
+      } catch (error) {
+        setAuthState((prev) => ({ ...prev, isLoading: false }));
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Registration failed',
         };
       }
-    } catch (error) {
-      setAuthState(prev => ({ ...prev, isLoading: false }));
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Registration failed' 
-      };
-    }
-  }, [login]);
+    },
+    []
+  );
 
   const logout = useCallback(async () => {
     try {
-      // Call logout endpoint
       await apiService.logout();
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Always clear local state
-      localStorage.removeItem('auth_token');
       setAuthState({
         user: null,
         isLoading: false,
@@ -150,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await apiService.getCurrentUser();
       if (response.success && response.data) {
-        setAuthState(prev => ({
+        setAuthState((prev) => ({
           ...prev,
           user: response.data!,
         }));
@@ -165,16 +152,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiService.resetPassword(email);
       if (response.success) {
         return { success: true };
-      } else {
-        return { 
-          success: false, 
-          error: response.error || 'Password reset failed' 
-        };
       }
+      return {
+        success: false,
+        error: response.error || 'Password reset failed',
+      };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Password reset failed' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Password reset failed',
+      };
+    }
+  }, []);
+
+  const completePasswordReset = useCallback(async (token: string, password: string) => {
+    try {
+      const response = await apiService.confirmPasswordReset(token, password);
+      if (response.success) {
+        return { success: true };
+      }
+      return {
+        success: false,
+        error: response.error || 'Could not reset password',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Could not reset password',
       };
     }
   }, []);
@@ -186,13 +190,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     refreshUser,
     resetPassword,
+    completePasswordReset,
   };
 
-  return (
-    <AuthContext.Provider value={contextValue}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
 
-export { AuthContext }; 
+export { AuthContext };
