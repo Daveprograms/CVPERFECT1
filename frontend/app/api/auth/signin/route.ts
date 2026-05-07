@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function POST(request: Request) {
   try {
@@ -16,8 +17,7 @@ export async function POST(request: Request) {
     console.log('🔐 Frontend signin - calling backend authentication...')
 
     // Call backend authentication endpoint
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-    const response = await fetch(`${backendUrl}/api/auth/login`, {
+    const response = await fetchBackend('/api/auth/login', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -25,33 +25,45 @@ export async function POST(request: Request) {
       body: JSON.stringify({ email, password }),
     })
 
-    const data = await response.json()
+    const data = await response.json().catch(() => ({} as any))
 
     if (!response.ok) {
       return new NextResponse(
-        JSON.stringify({ message: data.detail || 'Authentication failed' }),
+        JSON.stringify({
+          message:
+            data?.detail ||
+            data?.error?.message ||
+            data?.message ||
+            'Authentication failed',
+        }),
         { status: response.status }
       )
     }
 
-    console.log('✅ Backend authentication successful')
+    if (!data?.token) {
+      return new NextResponse(
+        JSON.stringify({
+          message:
+            'Backend did not return an auth token. Check backend /api/auth/login response.',
+        }),
+        { status: 502 }
+      )
+    }
 
-    // Set the auth token cookie (for server-side routes)
     const cookieStore = cookies()
     cookieStore.set('auth_token', data.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
     })
 
-    // Return success response with token for client-side storage
     return new NextResponse(
-      JSON.stringify({ 
+      JSON.stringify({
         redirectUrl: '/dashboard',
-        token: data.token,
         user: data.user,
-        message: data.message || 'Sign in successful'
+        message: data.message || 'Sign in successful',
       }),
       { status: 200 }
     )

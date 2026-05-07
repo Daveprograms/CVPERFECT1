@@ -10,27 +10,62 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers
 revision = '001_add_job_tables'
-down_revision = None
+down_revision = '000_initial_core'
 branch_labels = None
 depends_on = None
 
 
 def upgrade():
-    # Create job_applications table
+    bind = op.get_bind()
+
+    # Create enums idempotently (migration may be re-run after partial failure)
+    applicationstatus = postgresql.ENUM(
+        'applied',
+        'interview',
+        'offer',
+        'rejected',
+        'withdrawn',
+        name='applicationstatus',
+        create_type=False,
+    )
+    jobtype = postgresql.ENUM(
+        'full-time',
+        'part-time',
+        'contract',
+        'internship',
+        'freelance',
+        name='jobtype',
+        create_type=False,
+    )
+    jobsource = postgresql.ENUM(
+        'manual',
+        'linkedin',
+        'indeed',
+        'glassdoor',
+        'company_website',
+        name='jobsource',
+        create_type=False,
+    )
+
+    applicationstatus.create(bind, checkfirst=True)
+    jobtype.create(bind, checkfirst=True)
+    jobsource.create(bind, checkfirst=True)
+
+    # Create job_applications table (UUIDs align with app.models.job_application)
     op.create_table(
         'job_applications',
-        sa.Column('id', sa.String(), nullable=False),
-        sa.Column('user_id', sa.String(), nullable=False),
+        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
+        sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('company_name', sa.String(), nullable=False),
         sa.Column('job_title', sa.String(), nullable=False),
         sa.Column('job_url', sa.String(), nullable=True),
         sa.Column('location', sa.String(), nullable=True),
         sa.Column('salary_range', sa.String(), nullable=True),
-        sa.Column('status', sa.Enum('applied', 'interview', 'offer', 'rejected', 'withdrawn', name='applicationstatus'), nullable=False),
+        sa.Column('status', applicationstatus, nullable=False),
         sa.Column('applied_date', sa.DateTime(), nullable=False),
         sa.Column('match_score', sa.Float(), nullable=True),
         sa.Column('notes', sa.Text(), nullable=True),
-        sa.Column('resume_id', sa.String(), nullable=True),
+        sa.Column('resume_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('created_at', sa.DateTime(), nullable=False),
         sa.Column('updated_at', sa.DateTime(), nullable=False),
         sa.PrimaryKeyConstraint('id'),
@@ -52,8 +87,8 @@ def upgrade():
         sa.Column('description', sa.Text(), nullable=False),
         sa.Column('location', sa.String(), nullable=True),
         sa.Column('salary_range', sa.String(), nullable=True),
-        sa.Column('job_type', sa.Enum('full-time', 'part-time', 'contract', 'internship', 'freelance', name='jobtype'), nullable=True),
-        sa.Column('source', sa.Enum('manual', 'linkedin', 'indeed', 'glassdoor', 'company_website', name='jobsource'), nullable=False),
+        sa.Column('job_type', jobtype, nullable=True),
+        sa.Column('source', jobsource, nullable=False),
         sa.Column('external_id', sa.String(), nullable=True),
         sa.Column('job_url', sa.String(), nullable=True),
         sa.Column('posted_date', sa.DateTime(), nullable=True),

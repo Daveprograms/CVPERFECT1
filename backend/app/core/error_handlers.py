@@ -121,10 +121,18 @@ async def general_exception_handler(
         f"Unexpected error on {request.url.path}: {str(exc)}",
         exc_info=exc
     )
-    
+
+    # Include a minimal preview to speed up debugging.
+    # Do NOT include tracebacks (they may contain secrets); keep this short.
+    details = {
+        "exception_type": type(exc).__name__,
+        "exception": str(exc)[:500],
+    }
+
     return create_error_response(
         error_code="INTERNAL_ERROR",
         message="An unexpected error occurred",
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        path=request.url.path
+        details=details,
+        path=request.url.path,
     )
