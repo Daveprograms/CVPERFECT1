@@ -26,14 +26,12 @@ import { getAuthToken } from '@/lib/auth'
 interface Resume {
   id: string;
   filename: string;
-  company_name: string;
-  score: number;
-  created_at: string;
-  updated_at: string;
-  has_feedback: boolean;
-  has_cover_letter: boolean;
-  has_learning_path: boolean;
-  has_practice_exam: boolean;
+  file_type: string;
+  upload_date: string;
+  content_preview: string;
+  character_count: number;
+  latest_score: number | null;
+  analysis_count: number;
 }
 
 interface PaginationInfo {
@@ -61,6 +59,8 @@ export default function ResumesPage() {
   const [error, setError] = useState<string | null>(null)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [analyzingResumeId, setAnalyzingResumeId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!getAuthToken()) {
@@ -82,9 +82,15 @@ export default function ResumesPage() {
         throw new Error('Failed to fetch resume history')
       }
 
-      const data: ResumeHistoryResponse = await response.json()
-      setResumes(data.resumes)
-      setPagination(data.pagination)
+      const data = await response.json()
+      // Backend returns a plain array; paginated shape is also handled
+      const list: Resume[] = Array.isArray(data) ? data : (data.resumes ?? [])
+      setResumes(list)
+      if (!Array.isArray(data) && data.pagination) {
+        setPagination(data.pagination)
+      } else {
+        setPagination({ page: 1, limit: list.length, total: list.length, pages: 1 })
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load resumes')
     } finally {
@@ -99,9 +105,13 @@ export default function ResumesPage() {
   }
 
   const handleDeleteResume = async (resumeId: string) => {
-    if (!confirm('Are you sure you want to delete this resume? This action cannot be undone.')) {
-      return
-    }
+    setConfirmDeleteId(resumeId)
+  }
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteId) return
+    const resumeId = confirmDeleteId
+    setConfirmDeleteId(null)
 
     try {
       setDeletingResumeId(resumeId)
@@ -114,18 +124,55 @@ export default function ResumesPage() {
         throw new Error('Failed to delete resume')
       }
 
-      // Refresh the resume list
-      await fetchResumes(pagination.page)
-      
-      // If current page is empty after deletion, go to previous page
-      if (resumes.length === 1 && pagination.page > 1) {
-        await fetchResumes(pagination.page - 1)
-      }
+      setResumes(prev => prev.filter(r => r.id !== resumeId))
+      setPagination(prev => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1)
+      }))
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete resume')
     } finally {
       setDeletingResumeId(null)
+    }
+  }
+
+  const handleAnalyzeResume = async (resumeId: string) => {
+    try {
+      setError(null)
+      setAnalyzingResumeId(resumeId)
+      const response = await fetch(`/api/resume/analyze/${resumeId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify({ job_description: '' })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData?.detail || 'Failed to analyze resume')
+      }
+
+      const data = await response.json()
+      setResumes(prev =>
+        prev.map(r =>
+          r.id === resumeId
+            ? {
+                ...r,
+                latest_score: data.overall_score ?? r.latest_score,
+                analysis_count: (r.analysis_count || 0) + 1
+              }
+            : r
+        )
+      )
+      sessionStorage.setItem(`analysis:${resumeId}`, JSON.stringify(data))
+      router.push(`/ai-feedback/${resumeId}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to analyze resume')
+    } finally {
+      setAnalyzingResumeId(null)
     }
   }
 
@@ -191,16 +238,19 @@ export default function ResumesPage() {
               >
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-1">{resume.company_name}</h3>
+                    <h3 className="font-semibold text-lg mb-1">{resume.filename}</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {resume.filename} • Updated: {new Date(resume.updated_at).toLocaleDateString()}
+                      {resume.file_type.toUpperCase()} • {resume.character_count.toLocaleString()} chars • Uploaded: {new Date(resume.upload_date).toLocaleDateString()}
                     </p>
+                    {resume.content_preview && (
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1 line-clamp-2">{resume.content_preview}</p>
+                    )}
                   </div>
                   <div className="flex items-center space-x-2">
-                    {resume.score ? (
+                    {resume.latest_score != null ? (
                       <div className="flex items-center space-x-1 bg-primary/10 text-primary px-2 py-1 rounded">
                         <Star className="w-4 h-4" />
-                        <span className="text-sm font-medium">{resume.score}/100</span>
+                        <span className="text-sm font-medium">{resume.latest_score}/100</span>
                       </div>
                     ) : (
                       <div className="text-sm text-gray-500 dark:text-gray-400">Not analyzed</div>
@@ -223,87 +273,54 @@ export default function ResumesPage() {
                 {/* Status Indicators */}
                 <div className="grid grid-cols-2 gap-2 mb-4">
                   <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
-                    resume.has_feedback 
-                      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' 
+                    resume.analysis_count > 0
+                      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300'
                       : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                   }`}>
-                    {resume.has_feedback ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                    <span>Feedback</span>
+                    {resume.analysis_count > 0 ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                    <span>{resume.analysis_count > 0 ? `${resume.analysis_count} Analysis` : 'Not analyzed'}</span>
                   </div>
-                  
-                  <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
-                    resume.has_cover_letter 
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
-                      : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                  }`}>
-                    {resume.has_cover_letter ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                    <span>Cover Letter</span>
-                  </div>
-                  
-                  <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
-                    resume.has_learning_path 
-                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300' 
-                      : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                  }`}>
-                    {resume.has_learning_path ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                    <span>Learning Path</span>
-                  </div>
-                  
-                  <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
-                    resume.has_practice_exam 
-                      ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300' 
-                      : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                  }`}>
-                    {resume.has_practice_exam ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                    <span>Practice Exam</span>
+
+                  <div className="flex items-center space-x-2 text-xs px-2 py-1 rounded bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                    <FileText className="w-3 h-3" />
+                    <span>{resume.character_count.toLocaleString()} chars</span>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
                 <div className="grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => router.push(`/ai-feedback/${resume.id}`)}
-                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      resume.has_feedback
-                        ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/30'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
+                    onClick={() => handleAnalyzeResume(resume.id)}
+                    disabled={analyzingResumeId === resume.id}
+                    className="flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Brain className="w-4 h-4" />
-                    <span>AI Feedback</span>
+                    {analyzingResumeId === resume.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Brain className="w-4 h-4" />
+                    )}
+                    <span>{analyzingResumeId === resume.id ? 'Analyzing...' : 'Analyze'}</span>
                   </button>
-                  
+
                   <button
                     onClick={() => router.push(`/cover-letters/${resume.id}`)}
-                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      resume.has_cover_letter
-                        ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/30'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
+                    className="flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                   >
                     <Mail className="w-4 h-4" />
                     <span>Cover Letter</span>
                   </button>
-                  
+
                   <button
                     onClick={() => router.push(`/learning-path/${resume.id}`)}
-                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      resume.has_learning_path
-                        ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/30'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
+                    className="flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                   >
                     <GraduationCap className="w-4 h-4" />
                     <span>Learning Path</span>
                   </button>
-                  
+
                   <button
                     onClick={() => router.push(`/practice-exam/${resume.id}`)}
-                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      resume.has_practice_exam
-                        ? 'bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/30'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
+                    className="flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                   >
                     <Target className="w-4 h-4" />
                     <span>Practice Exam</span>
@@ -349,6 +366,37 @@ export default function ResumesPage() {
 
 
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-sm mx-4">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <h2 className="text-lg font-semibold">Delete Resume</h2>
+            </div>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">
+              Are you sure you want to delete this resume? This action cannot be undone.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="flex-1 px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   )
 } 

@@ -32,6 +32,7 @@ import {
   CreditCard,
   User as UserIcon
 } from 'lucide-react'
+import { useAuth } from '@/hooks/useAuth'
 import DarkModeToggle from './DarkModeToggle'
 
 interface DashboardLayoutProps {
@@ -163,9 +164,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { id: 2, message: 'Application sent to TechCorp Inc.', time: '5 min ago', type: 'info' },
     { id: 3, message: 'Cover letter generated successfully', time: '10 min ago', type: 'success' }
   ])
+
+  const { user } = useAuth()
   const [showNotifications, setShowNotifications] = useState(false)
   const pathname = usePathname()
   const notificationRef = useRef<HTMLDivElement>(null)
+
+  const isPathActive = (href: string) => {
+    if (href === '/') return pathname === '/'
+    return pathname === href || pathname.startsWith(`${href}/`)
+  }
 
   // Close notifications when clicking outside
   useEffect(() => {
@@ -251,7 +259,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                       className="space-y-1 ml-4"
                     >
                       {group.items.map((item) => {
-                        const isActive = pathname === item.href
+                        const isActive = isPathActive(item.href)
                         return (
                           <Link
                             key={item.name}
@@ -284,8 +292,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <User className="h-4 w-4 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">Developer</p>
-                <p className="text-xs text-muted-foreground">Pro Plan</p>
+                <p className="text-sm font-medium">{user?.fullName}</p>
+                <p className="text-xs text-muted-foreground">{user?.subscription_type} Plan</p>
               </div>
               <div className="flex items-center space-x-1">
                 <DarkModeToggle />

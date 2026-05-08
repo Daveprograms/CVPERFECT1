@@ -5,12 +5,11 @@ import { useParams, useRouter } from 'next/navigation'
 import DashboardLayout from '@/components/DashboardLayout'
 import { ArrowLeft, FileText, Brain, Star, AlertCircle, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { getAuthToken } from '@/lib/auth'
 
 interface ResumeData {
   id: string
   filename: string
-  content: string
-  original_content: string
   score: number
   feedback: {
     category: string
@@ -24,13 +23,9 @@ interface ResumeData {
       severity: 'high' | 'medium' | 'low'
     }[]
   }[]
-  strengths: {
-    title: string
-    description: string
-    relevance: string
-  }[]
-  extracted_info: any
-  created_at: string
+  strengths: string[]
+  extracted_info?: any
+  created_at?: string
 }
 
 export default function AIFeedbackPage() {
@@ -41,31 +36,98 @@ export default function AIFeedbackPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
 
-  const resumeId = params.resumeId as string
+  const resumeIdParam = (params as any)?.resumeid ?? (params as any)?.resumeId
+  const resumeId = Array.isArray(resumeIdParam) ? resumeIdParam[0] : resumeIdParam
+
+  const normalizeAnalysis = (data: any): ResumeData => {
+    const rawFeedback: any[] = data.feedback || []
+    const groupedFeedback = rawFeedback.reduce((acc: any[], item: any) => {
+      const existing = acc.find((g: any) => g.category === (item.category || 'general'))
+      const feedbackItem = {
+        job_wants: item.job_wants || '',
+        you_have: item.you_have || '',
+        fix: item.fix || '',
+        example_line: item.example || item.example_line || '',
+        bonus: item.bonus || '',
+        severity: item.priority || item.severity || 'medium',
+      }
+      if (existing) {
+        existing.items.push(feedbackItem)
+      } else {
+        acc.push({ category: item.category || 'general', emoji: item.emoji || '🔧', items: [feedbackItem] })
+      }
+      return acc
+    }, [])
+
+    return {
+      id: resumeId,
+      filename: data.filename || `Resume ${resumeId}`,
+      score: data.score ?? data.overall_score ?? 0,
+      feedback: groupedFeedback,
+      strengths: (data.strengths || []).map((s: any) => (typeof s === 'string' ? s : (s?.title || ''))).filter(Boolean),
+      extracted_info: data.extracted_info,
+      created_at: data.created_at,
+    }
+  }
 
   useEffect(() => {
+    if (!resumeId) {
+      setError('Invalid resume ID in URL')
+      setIsLoading(false)
+      return
+    }
+
     const fetchResume = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch(`/api/resume/analyze/${resumeId}`)
-        
+
+        const cached = sessionStorage.getItem(`analysis:${resumeId}`)
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          sessionStorage.removeItem(`analysis:${resumeId}`)
+          setResume(normalizeAnalysis(parsed))
+          return
+        }
+
+        const token = getAuthToken()
+        if (!token) {
+          throw new Error('Authentication token not found')
+        }
+
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 12000)
+
+        const response = await fetch(`/api/resume/analyze/${resumeId}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ job_description: '' }),
+          signal: controller.signal
+        })
+        clearTimeout(timeoutId)
+
         if (!response.ok) {
-          throw new Error('Failed to fetch resume data')
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData?.detail || 'Failed to fetch resume data')
         }
 
         const data = await response.json()
-        setResume(data)
+        setResume(normalizeAnalysis(data))
       } catch (error) {
         console.error('Error fetching resume:', error)
-        setError('Failed to load resume data')
+        if ((error as any)?.name === 'AbortError') {
+          setError('Request timed out. Please ensure the backend is running and try again.')
+        } else {
+          setError(error instanceof Error ? error.message : 'Failed to load resume data')
+        }
       } finally {
         setIsLoading(false)
       }
     }
 
-    if (resumeId) {
-      fetchResume()
-    }
+    fetchResume()
   }, [resumeId])
 
   const renderFeedbackCategory = (category: string) => {
@@ -192,21 +254,13 @@ export default function AIFeedbackPage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border">
           <h2 className="text-lg font-semibold mb-4 flex items-center space-x-2">
             <FileText className="w-5 h-5" />
-            <span>Resume</span>
+            <span>Resume Preview</span>
           </h2>
           <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 min-h-[400px]">
-            {resume.original_content ? (
-              <iframe
-                src={`data:application/pdf;base64,${resume.original_content}`}
-                className="w-full h-96 border-0"
-                title="Resume PDF"
-              />
-            ) : (
-              <div className="text-center py-20">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Resume preview not available</p>
-              </div>
-            )}
+            <div className="text-center py-20">
+              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-500">Preview unavailable for this response format.</p>
+            </div>
           </div>
         </div>
 
@@ -219,15 +273,7 @@ export default function AIFeedbackPage() {
             <div className="grid gap-4">
               {resume.strengths.map((strength, index) => (
                 <div key={index} className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                  <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">
-                    {strength.title}
-                  </h3>
-                  <p className="text-green-700 dark:text-green-300 mb-2">
-                    {strength.description}
-                  </p>
-                  <p className="text-sm text-green-600 dark:text-green-400">
-                    <strong>Relevance:</strong> {strength.relevance}
-                  </p>
+                  <p className="text-green-700 dark:text-green-300">{strength}</p>
                 </div>
               ))}
             </div>
