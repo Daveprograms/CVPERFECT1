@@ -2,7 +2,7 @@ from fastapi import HTTPException, Depends
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.user import User, SubscriptionType
-from ..routers import get_current_user
+from ..core.dependencies import get_current_user
 from datetime import datetime
 from typing import Optional
 

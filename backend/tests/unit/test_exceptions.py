@@ -141,12 +141,13 @@ class TestErrorHandlers:
 class TestErrorHandlersIntegration:
     """Integration tests for error handlers with FastAPI"""
     
-    def test_custom_exception_handler(self, client):
+    def test_custom_exception_handler(self):
         """Test that custom exceptions are handled properly"""
         from app.main import app
         from fastapi import APIRouter
-        
-        # Create test router
+        from fastapi.testclient import TestClient
+
+        client = TestClient(app)
         test_router = APIRouter()
         
         @test_router.get("/test-auth-error")

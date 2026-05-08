@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 
 interface ThreeBackgroundProps {
@@ -16,36 +16,30 @@ export default function ThreeBackground({
   color = '#6366f1',
   speed = 0.3
 }: ThreeBackgroundProps) {
+  const [clientReady, setClientReady] = useState(false)
   const mountRef = useRef<HTMLDivElement>(null)
-  const isMountedRef = useRef(true)
 
   useEffect(() => {
-    isMountedRef.current = true
-    
-    if (!mountRef.current) {
-      console.log('Mount ref not available')
-      return
-    }
+    setClientReady(true)
+  }, [])
 
-    console.log('Starting Three.js background initialization...')
+  useEffect(() => {
+    if (!clientReady) return
 
-    // Scene
+    const mountEl = mountRef.current
+    if (!mountEl) return
+
     const scene = new THREE.Scene()
-    console.log('Scene created')
 
-    // Camera
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
     camera.position.z = 8
-    console.log('Camera created')
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ 
-      alpha: true, 
-      antialias: true 
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
     })
     renderer.setSize(window.innerWidth, window.innerHeight)
     renderer.setClearColor(0x000000, 0)
-    console.log('Renderer created')
 
     // Create particles
     const geometry = new THREE.BufferGeometry()
@@ -71,9 +65,7 @@ export default function ThreeBackground({
 
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
-    console.log('Geometry created with', particleCount, 'particles')
 
-    // Material - make particles bigger and brighter
     const material = new THREE.PointsMaterial({
       size: 8,
       vertexColors: true,
@@ -82,15 +74,11 @@ export default function ThreeBackground({
       sizeAttenuation: false,
       blending: THREE.AdditiveBlending
     })
-    console.log('Material created')
 
-    // Points
     const points = new THREE.Points(geometry, material)
     scene.add(points)
-    console.log('Points added to scene')
 
-    // Animation
-    let animationId: number
+    let animationId = 0
     const animate = () => {
       animationId = requestAnimationFrame(animate)
       
@@ -109,50 +97,28 @@ export default function ThreeBackground({
 
     window.addEventListener('resize', handleResize)
 
-    // Mount and start
-    mountRef.current.appendChild(renderer.domElement)
+    mountEl.appendChild(renderer.domElement)
     animate()
-    console.log('Three.js background started successfully')
 
-    // Cleanup
     return () => {
-      console.log('Cleaning up Three.js background')
-      isMountedRef.current = false
-      
-      if (animationId) {
-        cancelAnimationFrame(animationId)
-      }
-      
-      // Safely remove renderer DOM element
-      if (renderer && renderer.domElement && renderer.domElement.parentNode) {
-        try {
-          renderer.domElement.parentNode.removeChild(renderer.domElement)
-        } catch (error) {
-          console.warn('Could not remove renderer DOM element:', error)
-        }
-      }
-      
+      cancelAnimationFrame(animationId)
       window.removeEventListener('resize', handleResize)
+      mountEl.replaceChildren()
       geometry.dispose()
       material.dispose()
       renderer.dispose()
     }
-  }, [particleCount, color, speed])
+  }, [clientReady, particleCount, color, speed])
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      isMountedRef.current = false
-    }
-  }, [])
+  const shellClass = `fixed inset-0 pointer-events-none z-0 ${className}`
 
+  // Single stable host node (always same ref) — avoids React replace/removal fighting Three.js canvas
   return (
-    <div 
-      ref={mountRef} 
-      className={`fixed inset-0 pointer-events-none z-0 ${className}`}
-      style={{ 
-        background: 'transparent'
-      }}
+    <div
+      ref={mountRef}
+      className={shellClass}
+      style={{ background: 'transparent' }}
+      aria-hidden
     />
   )
 } 

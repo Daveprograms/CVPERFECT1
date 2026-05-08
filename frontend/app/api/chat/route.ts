@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
+import { resolveBearer } from '@/lib/server-auth'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function POST(req: Request) {
   try {
-    // Get auth token from request headers
-    const authHeader = req.headers.get('authorization') || ''
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const authHeader = resolveBearer(req) || ''
+    if (!authHeader.startsWith('Bearer ')) {
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       return new NextResponse('Message is required', { status: 400 })
     }
 
-    const response = await fetch(`${process.env.BACKEND_URL}/api/chat`, {
+    const response = await fetchBackend('/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -33,22 +33,6 @@ def migrate_user_schema():
     logger.info("Checking user table migrations...")
     
     with engine.connect() as conn:
-        # Check if firebase_uid column exists
-        try:
-            result = conn.execute(text("""
-                SELECT column_name 
-                FROM information_schema.columns 
-                WHERE table_name='users' AND column_name='firebase_uid'
-            """))
-            
-            if not result.fetchone():
-                logger.info("Adding firebase_uid column to users table...")
-                conn.execute(text("ALTER TABLE users ADD COLUMN firebase_uid VARCHAR"))
-                conn.commit()
-                logger.info("Added firebase_uid column")
-        except Exception as e:
-            logger.error(f"Error checking firebase_uid column: {e}")
-        
         # Check if stripe_customer_id column exists
         try:
             result = conn.execute(text("""

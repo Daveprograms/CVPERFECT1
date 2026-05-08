@@ -1,105 +1,172 @@
-'use client';
+'use client'
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import { AnimatedCard } from '@/components/ui/animated-card';
-import { FuturisticButton } from '@/components/ui/futuristic-button';
+import React, { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { AnimatedCard } from '@/components/ui/animated-card'
+import { FuturisticButton } from '@/components/ui/futuristic-button'
+import { apiService } from '@/services/api'
+import type { ResumeListItem } from '@/lib/api/resume'
+import { Loader2 } from 'lucide-react'
+
+function listScore(r: ResumeListItem): number | null {
+  const raw = r.score ?? r.latest_score
+  if (raw == null || raw === '') return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+}
+
+function atsScore(r: ResumeListItem): number | null {
+  const raw = r.ats_score
+  if (raw == null || raw === '') return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+}
 
 export const ResumeHistory: React.FC = () => {
-  // Demo data for resumes
-  const demoResumes = [
-    {
-      resume_filename: "Software Engineer Resume.pdf",
-      score: 87,
-      ats_score: 92,
-      analysis_count: 3,
-      character_count: 2847,
-      created_at: "2024-01-15T10:30:00Z"
-    },
-    {
-      resume_filename: "Data Scientist Resume.pdf",
-      score: 91,
-      ats_score: 88,
-      analysis_count: 2,
-      character_count: 3120,
-      created_at: "2024-01-12T14:20:00Z"
-    },
-    {
-      resume_filename: "Product Manager Resume.pdf",
-      score: 84,
-      ats_score: 85,
-      analysis_count: 1,
-      character_count: 2980,
-      created_at: "2024-01-10T09:15:00Z"
-    },
-    {
-      resume_filename: "DevOps Engineer Resume.pdf",
-      score: 89,
-      ats_score: 90,
-      analysis_count: 2,
-      character_count: 2650,
-      created_at: "2024-01-08T16:45:00Z"
-    },
-    {
-      resume_filename: "Frontend Developer Resume.pdf",
-      score: 86,
-      ats_score: 89,
-      analysis_count: 1,
-      character_count: 2750,
-      created_at: "2024-01-05T11:30:00Z"
-    },
-    {
-      resume_filename: "Backend Developer Resume.pdf",
-      score: 88,
-      ats_score: 91,
-      analysis_count: 2,
-      character_count: 2900,
-      created_at: "2024-01-03T13:20:00Z"
+  const [resumes, setResumes] = useState<ResumeListItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const page = await apiService.getResumeHistoryPage(1, 20)
+      setResumes(page.resumes)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load resumes')
+      setResumes([])
+    } finally {
+      setLoading(false)
     }
-  ];
+  }, [])
+
+  useEffect(() => {
+    void load()
+  }, [load])
 
   const getScoreColor = (score: number) => {
-    if (score >= 90) return 'text-green-600';
-    if (score >= 80) return 'text-blue-600';
-    if (score >= 70) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+    if (score >= 90) return 'text-green-600'
+    if (score >= 80) return 'text-blue-600'
+    if (score >= 70) return 'text-yellow-600'
+    return 'text-red-600'
+  }
 
-  const formatScore = (score: number) => `${score}%`;
+  const formatScore = (score: number | null) =>
+    score != null ? `${Math.round(score)}%` : '—'
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '—'
+    try {
+      return new Date(dateString).toLocaleDateString()
+    } catch {
+      return '—'
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-10 w-10 animate-spin text-purple-600" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+        {error}
+        <button
+          type="button"
+          className="ml-3 underline"
+          onClick={() => void load()}
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
+
+  const slice = resumes.slice(0, 6)
 
   return (
     <div>
-      <h2 className="text-2xl font-black text-purple-800 mb-6">📄 Recent Resumes</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {demoResumes.slice(0, 6).map((resume, index) => (
-          <AnimatedCard key={index} variant="glass" className="h-full border-2 border-purple-300">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-black text-purple-800 truncate">{resume.resume_filename}</h3>
-              <span className={`px-2 py-1 rounded-full text-xs font-black ${getScoreColor(resume.score)} bg-opacity-20 border-2 border-current`}>
-                {formatScore(resume.score)}
-              </span>
-            </div>
-            <div className="space-y-2 text-sm text-purple-700 mb-4 font-black">
-              <p>🎯 ATS Score: <span className={`font-black ${getScoreColor(resume.ats_score)}`}>{formatScore(resume.ats_score)}</span></p>
-              <p>📊 Analysis Count: {resume.analysis_count}</p>
-              <p>📝 Characters: {resume.character_count.toLocaleString()}</p>
-              <p>📅 Updated: {formatDate(resume.created_at)}</p>
-            </div>
-            <div className="flex space-x-2">
-              <FuturisticButton size="sm" variant="outline">
-                View Details
-              </FuturisticButton>
-              <FuturisticButton size="sm">
-                Optimize
-              </FuturisticButton>
-            </div>
-          </AnimatedCard>
-        ))}
-      </div>
+      <h2 className="mb-6 text-2xl font-black text-purple-800">
+        Recent resumes
+      </h2>
+      {slice.length === 0 ? (
+        <p className="text-purple-700">No resumes yet. Upload from your library.</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {slice.map((resume) => {
+            const id = String(resume.id)
+            const score = listScore(resume)
+            const ats = atsScore(resume)
+            const fn =
+              typeof resume.filename === 'string' ? resume.filename : 'Resume'
+            const created =
+              (typeof resume.updated_at === 'string'
+                ? resume.updated_at
+                : undefined) ||
+              (typeof resume.created_at === 'string'
+                ? resume.created_at
+                : undefined) ||
+              (typeof resume.upload_date === 'string'
+                ? resume.upload_date
+                : undefined)
+            const chars = (resume as { character_count?: unknown }).character_count
+            const charCount =
+              typeof chars === 'number' && !Number.isNaN(chars) ? chars : null
+            const analyses =
+              typeof resume.analysis_count === 'number' ? resume.analysis_count : 0
+            return (
+              <AnimatedCard
+                key={id}
+                variant="glass"
+                className="h-full border-2 border-purple-300"
+              >
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="truncate font-black text-purple-800">{fn}</h3>
+                  <span
+                    className={`rounded-full border-2 border-current bg-opacity-20 px-2 py-1 text-xs font-black ${
+                      score != null ? getScoreColor(score) : 'text-muted-foreground'
+                    }`}
+                  >
+                    {formatScore(score)}
+                  </span>
+                </div>
+                <div className="mb-4 space-y-2 text-sm font-black text-purple-700">
+                  <p>
+                    ATS:{' '}
+                    <span
+                      className={`font-black ${
+                        ats != null ? getScoreColor(ats) : ''
+                      }`}
+                    >
+                      {formatScore(ats)}
+                    </span>
+                  </p>
+                  <p>Analysis count: {analyses}</p>
+                  {charCount != null ? (
+                    <p>Characters: {charCount.toLocaleString()}</p>
+                  ) : null}
+                  <p>Updated: {formatDate(created)}</p>
+                </div>
+                <div className="flex space-x-2">
+                  <Link href={`/ai-feedback/${id}`}>
+                    <FuturisticButton size="sm" variant="outline">
+                      View details
+                    </FuturisticButton>
+                  </Link>
+                  <Link href={`/ai-feedback/${id}`}>
+                    <FuturisticButton size="sm">Open analysis</FuturisticButton>
+                  </Link>
+                </div>
+              </AnimatedCard>
+            )
+          })}
+        </div>
+      )}
     </div>
-  );
-}; 
+  )
+}

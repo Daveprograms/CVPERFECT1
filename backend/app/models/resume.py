@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, DateTime, Text, Integer, Float, JSON, ForeignKey, Boolean
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -15,6 +16,12 @@ class Resume(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     filename = Column(String, nullable=False)
     content = Column(Text, nullable=False)
+    # Canonical source text extracted from uploaded file (legacy backfill from `content`).
+    source_text = Column(Text, nullable=True)
+    # Canonical structured resume content (ResumeDocument JSONB).
+    document_json = Column(JSONB, nullable=True)
+    content_hash = Column(String(64), nullable=True)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
     file_type = Column(String, nullable=False)
     upload_date = Column(DateTime(timezone=True), server_default=func.now())
     processing_status = Column(String, default="pending")

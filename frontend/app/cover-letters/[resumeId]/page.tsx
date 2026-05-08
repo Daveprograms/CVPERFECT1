@@ -1,108 +1,164 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import DashboardLayout from '@/components/DashboardLayout'
-import { ArrowLeft, FileText, Mail, Download, Copy, Check } from 'lucide-react'
+import {
+  ArrowLeft,
+  FileText,
+  Mail,
+  Download,
+  Copy,
+  Check,
+  Loader2,
+  Sparkles,
+} from 'lucide-react'
 import { motion } from 'framer-motion'
+import { apiService } from '@/services/api'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
-interface ResumeData {
-  id: string
-  filename: string
-  original_content: string
-  cover_letter: string
-  created_at: string
-}
+const MIN_JOB_DESCRIPTION_CHARS = 40
 
 export default function CoverLetterPage() {
   const params = useParams()
   const router = useRouter()
-  const [resume, setResume] = useState<ResumeData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const resumeId = params.resumeId as string
+  const isLatestRoute = resumeId === 'latest'
+  const uploadInputRef = useRef<HTMLInputElement>(null)
+
+  const [filename, setFilename] = useState<string>('')
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [isLoadingResume, setIsLoadingResume] = useState(true)
+  const [isUploadingResume, setIsUploadingResume] = useState(false)
+
+  const [jobDescription, setJobDescription] = useState('')
+
+  const [letterContent, setLetterContent] = useState<string | null>(null)
+  const [generateError, setGenerateError] = useState<string | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
 
-  const resumeId = params.resumeId as string
-
-  useEffect(() => {
-    const fetchResume = async () => {
-      try {
-        setIsLoading(true)
-        const response = await fetch(`/api/resume/cover-letter/${resumeId}`)
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch cover letter')
-        }
-
-        const data = await response.json()
-        setResume(data)
-      } catch (error) {
-        console.error('Error fetching cover letter:', error)
-        setError('Failed to load cover letter')
-      } finally {
-        setIsLoading(false)
+  const loadResume = useCallback(async () => {
+    setLoadError(null)
+    setIsLoadingResume(true)
+    try {
+      const res = await apiService.getResumeRecord(resumeId)
+      if (!res.success || !res.data) {
+        throw new Error(res.error || 'Could not load resume')
       }
-    }
-
-    if (resumeId) {
-      fetchResume()
+      const rec = res.data as Record<string, unknown>
+      const name =
+        (typeof rec.filename === 'string' && rec.filename) ||
+        (typeof rec.original_filename === 'string' && rec.original_filename) ||
+        'Resume'
+      setFilename(name)
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : 'Failed to load resume')
+    } finally {
+      setIsLoadingResume(false)
     }
   }, [resumeId])
 
-  const handleCopy = async () => {
-    if (!resume?.cover_letter) return
-    
+  useEffect(() => {
+    if (resumeId) void loadResume()
+  }, [resumeId, loadResume])
+
+  const handleGenerate = async () => {
+    setGenerateError(null)
+    const jd = jobDescription.trim()
+    if (jd.length < MIN_JOB_DESCRIPTION_CHARS) {
+      setGenerateError(
+        `Paste the job posting (at least ${MIN_JOB_DESCRIPTION_CHARS} characters) so the letter can name the company and role from the posting.`
+      )
+      return
+    }
+    setIsGenerating(true)
     try {
-      await navigator.clipboard.writeText(resume.cover_letter)
+      const gen = await apiService.generateCoverLetter(resumeId, {
+        job_description: jd,
+      })
+      const payload = gen.data as { cover_letter?: string; content?: string } | undefined
+      const text = (payload?.cover_letter ?? payload?.content ?? '').trim()
+      if (!gen.success || !text) {
+        throw new Error(gen.error || 'Generation failed')
+      }
+      setLetterContent(text)
+    } catch (e) {
+      setGenerateError(e instanceof Error ? e.message : 'Generation failed')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
+  const handleCopy = async () => {
+    if (!letterContent) return
+    try {
+      await navigator.clipboard.writeText(letterContent)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch (error) {
-      console.error('Failed to copy:', error)
+    } catch {
+      setGenerateError('Could not copy to clipboard.')
     }
   }
 
   const handleDownload = () => {
-    if (!resume?.cover_letter) return
-    
-    const blob = new Blob([resume.cover_letter], { type: 'text/plain' })
+    if (!letterContent) return
+    const blob = new Blob([letterContent], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `cover-letter-${resume.filename}.txt`
+    const safe = filename.replace(/[^\w.-]+/g, '_') || 'resume'
+    a.download = `cover-letter-${safe}.txt`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
   }
 
-  if (isLoading) {
+  const handleUploadNewResume = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setGenerateError(null)
+    setIsUploadingResume(true)
+    try {
+      const res = await apiService.uploadResume(file)
+      if (!res.success || !res.data?.resume_id) {
+        throw new Error(res.error || 'Upload failed')
+      }
+      router.push(`/cover-letters/${res.data.resume_id}`)
+    } catch (err) {
+      setGenerateError(
+        err instanceof Error ? err.message : 'Could not upload resume'
+      )
+    } finally {
+      setIsUploadingResume(false)
+    }
+  }
+
+  if (isLoadingResume) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
-            <p>Loading cover letter...</p>
-          </div>
+        <div className="mx-auto flex max-w-3xl flex-col items-center justify-center gap-3 py-24">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading resume…</p>
         </div>
       </DashboardLayout>
     )
   }
 
-  if (error || !resume) {
+  if (loadError) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <Mail className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Error</h2>
-            <p className="text-gray-600 mb-4">{error || 'Cover letter not found'}</p>
-            <button
-              onClick={() => router.push('/resumes')}
-              className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90"
-            >
-              Back to Resumes
-            </button>
-          </div>
+        <div className="mx-auto max-w-lg py-20 text-center">
+          <Mail className="mx-auto mb-4 h-12 w-12 text-destructive" />
+          <h2 className="text-lg font-semibold">Could not load resume</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
+          <Button className="mt-6" onClick={() => router.push('/resumes')}>
+            Back to library
+          </Button>
         </div>
       </DashboardLayout>
     )
@@ -110,98 +166,203 @@ export default function CoverLetterPage() {
 
   return (
     <DashboardLayout>
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <button
+      <div className="mx-auto max-w-4xl space-y-8 px-4 pb-12 pt-4 sm:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
               onClick={() => router.push('/resumes')}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              aria-label="Back to resumes"
             >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
             <div>
-              <h1 className="text-2xl font-bold flex items-center space-x-2">
-                <Mail className="w-6 h-6 text-primary" />
-                <span>Cover Letter</span>
+              <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+                <Mail className="h-7 w-7 text-primary" />
+                Cover letter
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">{resume.filename}</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={handleCopy}
-              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
-            >
-              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              <span>{copied ? 'Copied!' : 'Copy'}</span>
-            </button>
-            <button
-              onClick={handleDownload}
-              className="flex items-center space-x-2 px-4 py-2 bg-primary text-white hover:bg-primary/90 rounded-lg transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              <span>Download</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Resume PDF Viewer */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border">
-          <h2 className="text-lg font-semibold mb-4 flex items-center space-x-2">
-            <FileText className="w-5 h-5" />
-            <span>Resume</span>
-          </h2>
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 min-h-[400px]">
-            {resume.original_content ? (
-              <iframe
-                src={`data:application/pdf;base64,${resume.original_content}`}
-                className="w-full h-96 border-0"
-                title="Resume PDF"
-              />
-            ) : (
-              <div className="text-center py-20">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Resume preview not available</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Cover Letter */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border"
-        >
-          <h2 className="text-lg font-semibold mb-6 flex items-center space-x-2">
-            <Mail className="w-5 h-5" />
-            <span>Generated Cover Letter</span>
-          </h2>
-          
-          {resume.cover_letter ? (
-            <div className="prose prose-gray dark:prose-invert max-w-none">
-              <div className="whitespace-pre-wrap text-gray-800 dark:text-gray-200 leading-relaxed">
-                {resume.cover_letter}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Mail className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No Cover Letter Generated</h3>
-              <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Generate a cover letter for this resume to see it here.
+              <p className="mt-1 text-sm text-muted-foreground">
+                {isLatestRoute ? 'Latest resume: ' : 'Resume: '}
+                {filename}
               </p>
-              <button
-                onClick={() => router.push('/resumes')}
-                className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary/90"
-              >
-                Generate Cover Letter
-              </button>
             </div>
-          )}
-        </motion.div>
+          </div>
+          {letterContent ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => void handleCopy()}
+              >
+                {copied ? (
+                  <Check className="h-4 w-4" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="gap-2"
+                onClick={handleDownload}
+              >
+                <Download className="h-4 w-4" />
+                Download
+              </Button>
+            </div>
+          ) : null}
+        </div>
+
+        <Card className="border-border/80">
+          <CardHeader>
+            <CardTitle className="text-lg">Which resume?</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Cover letters are always generated from resume text stored in your
+              account (latest upload, or a file you upload here).
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <input
+              ref={uploadInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="sr-only"
+              onChange={(ev) => void handleUploadNewResume(ev)}
+            />
+            <div className="space-y-2 text-sm text-muted-foreground">
+              {isLatestRoute ? (
+                <p>
+                  <span className="font-medium text-foreground">
+                    Use latest resume
+                  </span>{' '}
+                  (default): the writer uses your most recently uploaded resume.
+                </p>
+              ) : (
+                <p>
+                  <span className="font-medium text-foreground">
+                    Use this saved resume
+                  </span>
+                  : the writer uses the resume for this page only.
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button
+                type="button"
+                variant={isLatestRoute ? 'default' : 'outline'}
+                size="sm"
+                className="gap-2"
+                onClick={() => router.replace('/cover-letters/latest')}
+              >
+                Use latest resume
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                disabled={isUploadingResume}
+                onClick={() => uploadInputRef.current?.click()}
+              >
+                {isUploadingResume ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Uploading…
+                  </>
+                ) : (
+                  <>
+                    <FileText className="h-4 w-4" />
+                    Upload new resume
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/80">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Job posting
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Paste the full posting (or a long excerpt). The writer infers
+              company and role from that text and drafts a complete professional
+              letter grounded in your resume.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="jd" className="text-sm font-medium">
+                Job description{' '}
+                <span className="font-normal text-muted-foreground">
+                  (required — min. {MIN_JOB_DESCRIPTION_CHARS} characters)
+                </span>
+              </label>
+              <textarea
+                id="jd"
+                rows={8}
+                placeholder="Paste the job description, requirements, team context, and company name as it appears in the listing…"
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                className={cn(
+                  'flex min-h-[160px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background',
+                  'placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                )}
+              />
+            </div>
+            {generateError ? (
+              <p className="text-sm text-destructive">{generateError}</p>
+            ) : null}
+            <Button
+              type="button"
+              className="gap-2"
+              disabled={isGenerating}
+              onClick={() => void handleGenerate()}
+            >
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {isGenerating ? 'Writing…' : 'Generate cover letter'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {letterContent ? (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <Card className="border-primary/20 bg-card">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Your letter
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="whitespace-pre-wrap rounded-lg border border-border/60 bg-background/80 p-6 text-sm leading-relaxed text-foreground">
+                  {letterContent}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : (
+          <p className="text-center text-sm text-muted-foreground">
+            Generated text will appear here. Nothing is stored until you copy
+            or download it.
+          </p>
+        )}
       </div>
     </DashboardLayout>
   )
-} 
+}

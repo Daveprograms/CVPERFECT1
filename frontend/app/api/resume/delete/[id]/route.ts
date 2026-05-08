@@ -1,29 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveBearer } from '@/lib/server-auth'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  console.log('🗑️ Delete resume API called for resume:', params.id)
-  
   try {
-    // Get auth token from request headers
-    const authHeader = request.headers.get('authorization') || ''
-    console.log('🔐 Authorization header received:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NONE')
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ Missing or invalid authorization header')
+    const authHeader = resolveBearer(request) || ''
+    if (!authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       )
     }
-    
-    // Call backend API to delete resume
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'}/api/resume/${params.id}`
-    console.log('🌐 Calling backend:', backendUrl)
-    
-    const backendResponse = await fetch(backendUrl, {
+
+    console.log('🌐 Calling backend:', `/api/resume/${params.id}`)
+
+    const backendResponse = await fetchBackend(`/api/resume/${params.id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',

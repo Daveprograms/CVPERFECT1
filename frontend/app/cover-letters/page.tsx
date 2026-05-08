@@ -1,9 +1,11 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { FileText, Download, Share2, Plus } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
+import { apiService } from '@/services/api'
 
 interface CoverLetter {
   id: number
@@ -15,30 +17,18 @@ interface CoverLetter {
 }
 
 export default function CoverLettersPage() {
+  const router = useRouter()
   const [coverLetters, setCoverLetters] = useState<CoverLetter[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
 
   const handleGenerateCoverLetter = async () => {
     setIsGenerating(true)
     try {
-      // Call the API to generate a cover letter
-      const response = await fetch('/api/resume/cover-letter', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          job_description: '',
-          company_info: {}
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to generate cover letter')
+      const hist = await apiService.getResumeHistoryPage(1, 1)
+      if (!hist.resumes?.length) {
+        throw new Error('Upload a resume first, then open the cover letter writer.')
       }
-
-      const data = await response.json()
-      setCoverLetters([...coverLetters, data])
+      router.push('/cover-letters/latest')
     } catch (error) {
       console.error('Error generating cover letter:', error)
     } finally {
@@ -48,16 +38,22 @@ export default function CoverLettersPage() {
 
   return (
     <DashboardLayout>
-      <div className="container mx-auto px-4 py-8 mt-16">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Cover Letters</h1>
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Cover Letters</h1>
+            <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+              Open the writer for a resume, paste the job posting, and generate
+              a tailored letter (company and role are read from the posting).
+            </p>
+          </div>
           <button
             onClick={handleGenerateCoverLetter}
             disabled={isGenerating}
-            className="flex items-center space-x-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+            className="flex items-center space-x-2 rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            <Plus className="w-5 h-5" />
-            <span>{isGenerating ? 'Generating...' : 'Generate New'}</span>
+            <Plus className="h-5 w-5" />
+            <span>{isGenerating ? 'Opening…' : 'Open writer'}</span>
           </button>
         </div>
 
@@ -69,15 +65,16 @@ export default function CoverLettersPage() {
           >
             <FileText className="w-16 h-16 mx-auto text-gray-400 mb-4" />
             <h2 className="text-xl font-semibold mb-2">No Cover Letters Yet</h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Generate your first cover letter to get started
+            <p className="mb-6 text-gray-600 dark:text-gray-400">
+              Use the writer with your resume and a pasted posting for a
+              concrete letter—not a generic blurb.
             </p>
             <button
               onClick={handleGenerateCoverLetter}
               disabled={isGenerating}
-              className="inline-flex items-center justify-center px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors shadow-lg text-lg font-medium"
+              className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-lg font-medium text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
             >
-              {isGenerating ? 'Generating...' : 'Generate Cover Letter'}
+              {isGenerating ? 'Opening…' : 'Open cover letter writer'}
             </button>
           </motion.div>
         ) : (

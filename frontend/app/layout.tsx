@@ -19,17 +19,12 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Global error handler for unhandled promise rejections
-  if (typeof window !== 'undefined') {
-    window.addEventListener('unhandledrejection', (event) => {
-      console.error('Unhandled promise rejection:', event.reason)
-      event.preventDefault()
-    })
-  }
-
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body
+        className={`${inter.className} cvp-css-ok bg-background text-foreground antialiased`}
+        suppressHydrationWarning
+      >
         <ErrorBoundary>
           <Providers>
             {children}

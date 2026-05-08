@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Send, Loader2 } from 'lucide-react'
+import { apiService } from '@/services/api'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -33,11 +34,7 @@ export function AIChat() {
     setLoading(true)
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage })
-      })
+      const response = await apiService.sendChatMessage(userMessage)
 
       if (!response.ok) {
         throw new Error('Failed to get response')

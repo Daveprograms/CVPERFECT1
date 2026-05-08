@@ -1,73 +1,67 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import DashboardLayout from '@/components/DashboardLayout'
+import { apiService } from '@/services/api'
 import { Download, FileText, Calendar, Target, AlertCircle } from 'lucide-react'
+import type { ResumeListItem } from '@/lib/api/resume'
 
-interface Resume {
-  id: string
-  filename: string
-  score: number
-  created_at: string
-  updated_at: string
-  job_description: string
-
+function listScore(r: ResumeListItem): number | null {
+  const raw = r.score ?? r.latest_score
+  if (raw == null || raw === '') return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
 }
 
 export default function DownloadResumePage() {
-  const [resumes, setResumes] = useState<Resume[]>([])
+  const [resumes, setResumes] = useState<ResumeListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [downloading, setDownloading] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchResumes()
-  }, [])
-
-  const fetchResumes = async () => {
+  const fetchResumes = useCallback(async () => {
     try {
-      const response = await fetch('/api/resume/history')
-      if (!response.ok) {
-        throw new Error('Failed to fetch resumes')
-      }
-      const data = await response.json()
-      setResumes(data)
+      const page = await apiService.getResumeHistoryPage(1, 200)
+      setResumes(page.resumes)
     } catch (error) {
       toast.error('Failed to fetch resume history')
       console.error('History error:', error)
+      setResumes([])
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    void fetchResumes()
+  }, [fetchResumes])
 
   const downloadReport = async (resumeId: string, format: 'json' | 'txt' | 'pdf') => {
     try {
       setDownloading(`${resumeId}-${format}`)
-      const response = await fetch(`/api/resume/download/${resumeId}?format=${format}`)
-      
+      const response = await apiService.downloadResume(resumeId, format)
+
       if (!response.ok) {
         throw new Error('Failed to download report')
       }
 
-      // Get the blob and create download link
       const blob = await response.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      
-      // Get filename from Content-Disposition header or use default
+
       const contentDisposition = response.headers.get('Content-Disposition')
-      const filename = contentDisposition 
+      const filename = contentDisposition
         ? contentDisposition.split('filename=')[1]?.replace(/"/g, '')
         : `resume_analysis_${resumeId.slice(0, 8)}.${format}`
-      
+
       a.download = filename
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
-      
+
       toast.success(`Report downloaded successfully`)
     } catch (error) {
       toast.error('Failed to download report')
@@ -89,11 +83,13 @@ export default function DownloadResumePage() {
     return 'bg-red-100 text-red-800'
   }
 
+  const analyzedResumes = resumes.filter((r) => listScore(r) != null)
+
   if (loading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <div className="flex h-64 items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
         </div>
       </DashboardLayout>
     )
@@ -102,140 +98,161 @@ export default function DownloadResumePage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <h1 className="text-2xl font-bold mb-2">Download Resume Reports</h1>
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+          <h1 className="mb-2 text-2xl font-bold">Download resume reports</h1>
           <p className="text-gray-600 dark:text-gray-300">
-            Download detailed analysis reports for your resumes in various formats
+            Download analysis reports for resumes that have been scored.
           </p>
         </motion.div>
 
-        {resumes.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-12 shadow-sm text-center">
-            <AlertCircle className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-              No Analyzed Resumes Found
+        {analyzedResumes.length === 0 ? (
+          <div className="rounded-lg bg-white p-12 text-center shadow-sm dark:bg-gray-800">
+            <AlertCircle className="mx-auto mb-4 h-12 w-12 text-gray-400" />
+            <h3 className="mb-2 text-lg font-medium text-gray-900 dark:text-white">
+              No analyzed resumes
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              You need to upload and analyze a resume before you can download reports.
+            <p className="mb-4 text-gray-500 dark:text-gray-400">
+              Upload a resume and run analysis, then return here to download reports.
             </p>
             <a
               href="/resumes/upload"
-              className="inline-flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+              className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-white transition-colors hover:bg-primary/90"
             >
-              <FileText className="w-4 h-4 mr-2" />
-              Upload Resume
+              <FileText className="mr-2 h-4 w-4" />
+              Upload resume
             </a>
           </div>
         ) : (
           <div className="grid gap-4">
-            {resumes.map((resume) => (
-              <motion.div
-                key={resume.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <FileText className="w-5 h-5 text-gray-400 flex-shrink-0" />
-                      <h3 className="text-lg font-medium text-gray-900 dark:text-white truncate">
-                        {resume.filename || `Resume ${resume.id.slice(0, 8)}`}
-                      </h3>
-                      <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getScoreBadge(resume.score)}`}>
-                        {resume.score >= 80 ? 'Excellent' : resume.score >= 60 ? 'Good' : 'Needs Work'}
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                      <div className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        Analyzed {new Date(resume.updated_at).toLocaleDateString()}
-                      </div>
-                      
-                      <div className="flex items-center">
-                        <div className={`font-bold ${getScoreColor(resume.score)} mr-1`}>
-                          {resume.score}
+            {analyzedResumes.map((resume) => {
+              const score = listScore(resume)!
+              const id = String(resume.id)
+              const fn =
+                typeof resume.filename === 'string' ? resume.filename : `Resume ${id.slice(0, 8)}`
+              const updated =
+                (typeof resume.updated_at === 'string' && resume.updated_at) ||
+                (typeof resume.created_at === 'string' && resume.created_at) ||
+                ''
+              const jobDesc = (resume as { job_description?: string }).job_description
+              return (
+                <motion.div
+                  key={id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex items-center gap-3">
+                        <FileText className="h-5 w-5 flex-shrink-0 text-gray-400" />
+                        <h3 className="truncate text-lg font-medium text-gray-900 dark:text-white">
+                          {fn}
+                        </h3>
+                        <div
+                          className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${getScoreBadge(score)}`}
+                        >
+                          {score >= 80 ? 'Excellent' : score >= 60 ? 'Good' : 'Needs work'}
                         </div>
-                        <span>/ 100</span>
                       </div>
 
-                      {resume.job_description && (
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                        {updated ? (
+                          <div className="flex items-center">
+                            <Calendar className="mr-1 h-4 w-4" />
+                            Analyzed {new Date(updated).toLocaleDateString()}
+                          </div>
+                        ) : null}
+
                         <div className="flex items-center">
-                          <Target className="w-4 h-4 mr-1" />
-                          <span>Job-targeted</span>
+                          <div className={`mr-1 font-bold ${getScoreColor(score)}`}>
+                            {Math.round(score)}
+                          </div>
+                          <span>/ 100</span>
                         </div>
-                      )}
+
+                        {jobDesc ? (
+                          <div className="flex items-center">
+                            <Target className="mr-1 h-4 w-4" />
+                            <span>Job-targeted</span>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="ml-4 flex flex-shrink-0 items-center gap-2">
+                      <button
+                        onClick={() => downloadReport(id, 'pdf')}
+                        disabled={downloading === `${id}-pdf`}
+                        className="flex items-center gap-2 rounded-md bg-red-600 px-3 py-2 text-sm text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                        title="Download as professional PDF report"
+                      >
+                        <Download className="h-4 w-4" />
+                        {downloading === `${id}-pdf` ? 'Downloading...' : 'PDF report'}
+                      </button>
+
+                      <button
+                        onClick={() => downloadReport(id, 'txt')}
+                        disabled={downloading === `${id}-txt`}
+                        className="flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+                        title="Download as readable text file"
+                      >
+                        <Download className="h-4 w-4" />
+                        {downloading === `${id}-txt` ? 'Downloading...' : 'TXT report'}
+                      </button>
+
+                      <button
+                        onClick={() => downloadReport(id, 'json')}
+                        disabled={downloading === `${id}-json`}
+                        className="flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+                        title="Download as JSON data file"
+                      >
+                        <Download className="h-4 w-4" />
+                        {downloading === `${id}-json` ? 'Downloading...' : 'JSON data'}
+                      </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 ml-4">
-                    <button
-                      onClick={() => downloadReport(resume.id, 'pdf')}
-                      disabled={downloading === `${resume.id}-pdf`}
-                      className="flex items-center gap-2 px-3 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 transition-colors text-sm"
-                      title="Download as professional PDF report"
-                    >
-                      <Download className="w-4 h-4" />
-                      {downloading === `${resume.id}-pdf` ? 'Downloading...' : 'PDF Report'}
-                    </button>
-                    
-                    <button
-                      onClick={() => downloadReport(resume.id, 'txt')}
-                      disabled={downloading === `${resume.id}-txt`}
-                      className="flex items-center gap-2 px-3 py-2 bg-primary text-white rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors text-sm"
-                      title="Download as readable text file"
-                    >
-                      <Download className="w-4 h-4" />
-                      {downloading === `${resume.id}-txt` ? 'Downloading...' : 'TXT Report'}
-                    </button>
-                    
-                    <button
-                      onClick={() => downloadReport(resume.id, 'json')}
-                      disabled={downloading === `${resume.id}-json`}
-                      className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors text-sm"
-                      title="Download as JSON data file"
-                    >
-                      <Download className="w-4 h-4" />
-                      {downloading === `${resume.id}-json` ? 'Downloading...' : 'JSON Data'}
-                    </button>
+                  <div className="mt-4">
+                    <div className="mb-1 flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <span>Overall score</span>
+                      <span>{Math.round(score)}/100</span>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+                      <div
+                        className={`h-2 rounded-full transition-all duration-500 ${
+                          score >= 80
+                            ? 'bg-green-500'
+                            : score >= 60
+                              ? 'bg-yellow-500'
+                              : 'bg-red-500'
+                        }`}
+                        style={{ width: `${Math.min(100, Math.max(0, score))}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-
-                {/* Progress bar for score */}
-                <div className="mt-4">
-                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
-                    <span>Overall Score</span>
-                    <span>{resume.score}/100</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-500 ${
-                        resume.score >= 80 ? 'bg-green-500' :
-                        resume.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${resume.score}%` }}
-                    />
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              )
+            })}
           </div>
         )}
 
-        {/* Format Information */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-          <h3 className="font-medium text-blue-900 dark:text-blue-100 mb-2">Download Formats</h3>
-          <div className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-            <div><strong>PDF Report:</strong> Professional, formatted report perfect for sharing with recruiters or printing</div>
-            <div><strong>TXT Report:</strong> Human-readable format with detailed analysis, feedback, and recommendations</div>
-            <div><strong>JSON Data:</strong> Structured data format for programmatic use or further analysis</div>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+          <h3 className="mb-2 font-medium text-blue-900 dark:text-blue-100">
+            Download formats
+          </h3>
+          <div className="space-y-1 text-sm text-blue-800 dark:text-blue-200">
+            <div>
+              <strong>PDF report:</strong> Formatted report for sharing or printing
+            </div>
+            <div>
+              <strong>TXT report:</strong> Readable analysis and recommendations
+            </div>
+            <div>
+              <strong>JSON data:</strong> Structured data for tooling
+            </div>
           </div>
         </div>
       </div>
     </DashboardLayout>
   )
-} 
+}

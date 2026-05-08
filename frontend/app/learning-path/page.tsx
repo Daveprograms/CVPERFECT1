@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { GraduationCap, Book, CheckCircle, Clock, Target } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
+import { apiService } from '@/services/api'
 
 interface LearningPath {
   id: number
@@ -39,23 +40,21 @@ export default function LearningPathPage() {
   const handleGenerateLearningPath = async () => {
     setIsGenerating(true)
     try {
-      // Call the API to generate a learning path
-      const response = await fetch('/api/resume/learning-path', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          job_description: '',
-          current_skills: []
-        }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to generate learning path')
+      const hist = await apiService.getResumeHistoryPage(1, 1)
+      const resumeId = hist.resumes[0]?.id
+      if (!resumeId) {
+        throw new Error('Upload a resume first.')
       }
 
-      const data = await response.json()
+      const gen = await apiService.generateLearningPath(
+        resumeId,
+        'Career development focus'
+      )
+      if (!gen.success || !gen.data) {
+        throw new Error(gen.error || 'Failed to generate learning path')
+      }
+
+      const data = gen.data as unknown as LearningPath
       setLearningPaths([...learningPaths, data])
     } catch (error) {
       console.error('Error generating learning path:', error)

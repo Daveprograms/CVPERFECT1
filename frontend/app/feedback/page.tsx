@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
 import Link from 'next/link'
+import { apiService } from '@/services/api'
 
 interface ResumeAnalysis {
   score: number;
@@ -118,7 +119,7 @@ export default function FeedbackPage() {
       }
 
       // Download PDF report from the API
-      const response = await fetch(`/api/resume/download/${resumeId}?format=pdf`)
+      const response = await apiService.downloadResume(resumeId, 'pdf')
       
       if (!response.ok) {
         throw new Error('Failed to download PDF report')

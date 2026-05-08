@@ -33,8 +33,8 @@ export const PRO_LIMITS = {
 
 // AI Models
 export const AIModels = {
-  GEMINI: "gemini-1.5-flash",
-  GEMINI_VISION: "gemini-1.5-flash-exp"
+  GEMINI: "gemini-2.5-flash",
+  GEMINI_VISION: "gemini-2.5-flash",
 } as const;
 
 // File Types

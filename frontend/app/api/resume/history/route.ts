@@ -1,36 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { resolveBearer } from '@/lib/server-auth'
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8003'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const page = searchParams.get('page') || '1'
     const limit = searchParams.get('limit') || '10'
-    
-    // Get auth token from request headers
-    const authHeader = request.headers.get('authorization') || ''
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+
+    const authHeader = resolveBearer(request) || ''
+    if (!authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ detail: 'Not authenticated' }, { status: 401 })
     }
 
-    const response = await fetch(`${BACKEND_URL}/api/resume/history?page=${page}&limit=${limit}`, {
+    const response = await fetchBackend(
+      `/api/resume/history?page=${page}&limit=${limit}`,
+      {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': 'application/json',
+        },
+      }
+    )
+
+    const text = await response.text()
+    return new NextResponse(text, {
+      status: response.status,
       headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json',
+        'Content-Type': response.headers.get('content-type') || 'application/json',
       },
     })
-
-    if (!response.ok) {
-      throw new Error(`Backend responded with ${response.status}`)
-    }
-
-    const data = await response.json()
-    return NextResponse.json(data)
   } catch (error) {
-    console.error('Error fetching feedback history:', error)
-    return NextResponse.json({ error: 'Failed to fetch feedback history' }, { status: 500 })
+    console.error('Error fetching resume history:', error)
+    return NextResponse.json(
+      { detail: 'Failed to fetch resume history' },
+      { status: 500 }
+    )
   }
 } 

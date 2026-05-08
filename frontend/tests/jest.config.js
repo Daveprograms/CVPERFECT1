@@ -6,20 +6,22 @@
 const nextJest = require('next/jest');
 
 const createJestConfig = nextJest({
-  // Provide the path to your Next.js app to load next.config.js and .env files
-  dir: './',
+  // Next.js app root (one level up from this config file)
+  dir: '..',
 });
 
 // Add any custom config to be passed to Jest
 const customJestConfig = {
+  // App root (this file lives in tests/)
+  rootDir: '..',
+
   // Test environment
   testEnvironment: 'jsdom',
-  
+
   // Setup files
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  
-  // Module name mapping
-  moduleNameMapping: {
+
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
     '^@/components/(.*)$': '<rootDir>/components/$1',
     '^@/hooks/(.*)$': '<rootDir>/hooks/$1',
@@ -28,6 +30,9 @@ const customJestConfig = {
     '^@/utils/(.*)$': '<rootDir>/utils/$1',
     '^@/context/(.*)$': '<rootDir>/context/$1',
     '^@/shared/(.*)$': '<rootDir>/../shared/$1',
+    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$':
+      '<rootDir>/tests/__mocks__/fileMock.js',
   },
   
   // Test match patterns
@@ -138,13 +143,6 @@ const customJestConfig = {
   // Mock patterns
   modulePathIgnorePatterns: ['<rootDir>/.next/'],
   
-  // Handle static assets
-  moduleNameMapping: {
-    ...require('./moduleNameMapping'),
-    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-    '\\.(jpg|jpeg|png|gif|eot|otf|webp|svg|ttf|woff|woff2|mp4|webm|wav|mp3|m4a|aac|oga)$':
-      '<rootDir>/tests/__mocks__/fileMock.js',
-  },
 };
 
 // Create the Jest config

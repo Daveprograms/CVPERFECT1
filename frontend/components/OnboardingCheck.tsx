@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
+import { apiService } from '@/services/api'
 
 interface OnboardingCheckProps {
   children: React.ReactNode
@@ -12,29 +13,23 @@ export default function OnboardingCheck({ children }: OnboardingCheckProps) {
   const [loading, setLoading] = useState(true)
   const [onboardingCompleted, setOnboardingCompleted] = useState(false)
   const router = useRouter()
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth()
 
   useEffect(() => {
     const checkOnboardingStatus = async () => {
+      if (authLoading) {
+        return
+      }
+
       if (!isAuthenticated || !user) {
         setLoading(false)
         return
       }
 
+      setLoading(true)
       try {
-        const response = await fetch('/api/onboarding/status', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
-          }
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          setOnboardingCompleted(data.onboarding_completed)
-        } else {
-          // If we can't check status, assume onboarding is not completed
-          setOnboardingCompleted(false)
-        }
+        const data = await apiService.getOnboardingStatus()
+        setOnboardingCompleted(!!data.onboarding_completed)
       } catch (error) {
         console.error('Error checking onboarding status:', error)
         setOnboardingCompleted(false)
@@ -43,16 +38,19 @@ export default function OnboardingCheck({ children }: OnboardingCheckProps) {
       }
     }
 
-    checkOnboardingStatus()
-  }, [isAuthenticated, user])
+    void checkOnboardingStatus()
+  }, [authLoading, isAuthenticated, user])
 
   useEffect(() => {
-    if (!loading && isAuthenticated && !onboardingCompleted) {
+    if (authLoading || loading) {
+      return
+    }
+    if (isAuthenticated && !onboardingCompleted) {
       router.push('/onboarding')
     }
-  }, [loading, isAuthenticated, onboardingCompleted, router])
+  }, [authLoading, loading, isAuthenticated, onboardingCompleted, router])
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">

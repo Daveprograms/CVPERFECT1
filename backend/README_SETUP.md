@@ -31,12 +31,17 @@ pip install -r requirements.txt
 Create a `.env` file in the `backend` directory:
 
 ```bash
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/cvperfect
+# Database (Supabase: Project Settings → Database → URI)
+# URL-encode special characters in the password (@ → %40). Use ?sslmode=require.
+# IPv4 / most home networks: use Session pooler (user is postgres.<PROJECT_REF>, host like aws-0-...pooler.supabase.com).
+DATABASE_URL=postgresql://postgres.<PROJECT_REF>:ENCODED_PASSWORD@aws-1-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require
+# Direct (often IPv6): postgresql://postgres:ENCODED_PASSWORD@db.<PROJECT_REF>.supabase.co:5432/postgres?sslmode=require
 
-# Firebase
-FIREBASE_CREDENTIALS_PATH=path/to/firebase-credentials.json
-FIREBASE_API_KEY=your_firebase_api_key
+SUPABASE_URL=https://<PROJECT_REF>.supabase.co
+SUPABASE_SERVICE_KEY=your_service_role_key
+
+# JWT (required for auth)
+JWT_SECRET=your-long-random-secret
 
 # Stripe
 STRIPE_SECRET_KEY=your_stripe_secret_key
@@ -64,8 +69,11 @@ ENVIRONMENT=development
 
 ### 4. Run Database Migrations
 
+Schema is **only** applied via Alembic (the app does not auto-create tables). Full notes: **`MIGRATIONS.md`**.
+
 ```bash
-alembic upgrade head
+cd backend
+python -m alembic upgrade head
 ```
 
 ### 5. Run Tests

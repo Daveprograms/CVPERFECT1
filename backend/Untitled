@@ -1,0 +1,46 @@
+You are debugging a Gemini API integration that is producing 404 (model not found) and 429 (rate limit) errors.
+
+Your task is to find and fix the ROOT cause — not surface-level fixes.
+
+CONTEXT:
+- The correct model MUST be "gemini-1.5-flash"
+- The backend already defines _RUNTIME_GEMINI_MODEL = "gemini-1.5-flash"
+- However, 404 errors still occur → meaning some part of the code is still using an invalid model or wrong API call
+- 429 errors indicate duplicate or excessive requests (likely frontend or retry loops)
+
+WHAT TO DO:
+
+1. SEARCH the entire codebase for ANY Gemini model usage
+   - Find all instances of:
+     - GenerativeModel(...)
+     - model=...
+     - hardcoded model strings
+   - Replace ALL of them with the single source of truth:
+     _RUNTIME_GEMINI_MODEL
+
+2. ENSURE there is NO fallback or override anywhere
+   - No environment variable
+   - No request-based model switching
+   - No old model names like "gemini-pro" or "gemini-2.0-flash"
+
+3. VERIFY Gemini is only called ONCE per analysis
+   - Check for duplicate calls in:
+     - frontend (multiple fetches, useEffect loops)
+     - backend (multiple service calls)
+   - Add protection:
+     - if resume.processing_status == "analyzing": block duplicate requests
+
+4. ADD LOGGING to confirm behavior:
+   - Log model name before every Gemini call
+   - Log when analyze endpoint is triggered
+   - Log how many times it's called per request
+
+5. FIX rate limiting issue (429):
+   - Ensure frontend does NOT spam requests
+   - Prevent repeated calls before previous one completes
+
+OUTPUT:
+- List of all incorrect model usages found
+- Exact fixes applied
+- Any duplicate API calls removed
+- Final corrected code snippets only (no long explanations)

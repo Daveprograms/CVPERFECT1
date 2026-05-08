@@ -3,7 +3,7 @@
 ## ✅ **Critical Issues Fixed**
 
 ### 1. **Authentication System** ✅
-- ✅ Frontend now uses real Firebase authentication
+- ✅ JWT authentication (HTTP-only cookie + Bearer for BFF)
 - ✅ Removed test authentication bypasses
 - ✅ Backend `/api/auth/me` endpoint added
 - ✅ Proper token validation between frontend and backend
@@ -60,10 +60,8 @@ npm run dev
 ### **Backend (.env)**
 ```env
 DATABASE_URL=postgresql://postgres:postgres@localhost/cvperfect
-SECRET_KEY=your-secret-key
-GEMINI_API_KEY=AIzaSyDiKfi6nycHLH7-J3Ov-o5NNKMfIe7K7ec
-FIREBASE_API_KEY=your-firebase-api-key
-FIREBASE_CREDENTIALS_PATH=path/to/firebase-credentials.json
+JWT_SECRET=your-long-random-secret
+GEMINI_API_KEY=your-gemini-api-key
 STRIPE_SECRET_KEY=your-stripe-secret-key
 FRONTEND_URL=http://localhost:3000
 ```
@@ -77,14 +75,14 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
 
 ## 🎯 **Next Steps for MVP**
 
-1. **Test Authentication Flow** - Sign up/in should work with Firebase
+1. **Test Authentication Flow** - Sign up/in with email/password (JWT)
 2. **Test Resume Upload** - Upload a PDF/DOCX file
 3. **Test AI Analysis** - Get real Gemini AI feedback
 4. **Test Billing** - Try subscription upgrade (test mode)
 
 ## 🐛 **Known Issues to Watch**
 
-1. **Firebase Setup** - Make sure Firebase credentials are configured
+1. **JWT / `.env`** - Set `JWT_SECRET` and `DATABASE_URL` on the backend
 2. **Database** - Ensure PostgreSQL is running and accessible
 3. **File Uploads** - Check file size limits and validation
 4. **CORS** - Verify CORS settings for frontend-backend communication

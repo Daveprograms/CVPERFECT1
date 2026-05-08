@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function POST(req: Request) {
   try {
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
       })
     }
 
-    const response = await fetch(`${process.env.BACKEND_URL}/api/resume/score`, {
+    const response = await fetchBackend('/api/resume/score', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

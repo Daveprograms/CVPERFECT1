@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = cookies()
-    const token = cookieStore.get('access_token')?.value
+    const token = cookieStore.get('auth_token')?.value
 
     if (!token) {
       return new NextResponse('Unauthorized', { status: 401 })
@@ -18,11 +19,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Use the super free upgrade endpoint if subscription_type is provided
-    const endpoint = subscription_type ? '/billing/upgrade-free' : '/billing/upgrade'
+    const endpoint = subscription_type ? '/api/billing/upgrade-free' : '/api/billing/upgrade'
     const body = subscription_type ? { subscription_type } : { plan_id }
 
     // Forward the request to the backend
-    const response = await fetch(`${process.env.BACKEND_URL}${endpoint}`, {
+    const response = await fetchBackend(endpoint, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

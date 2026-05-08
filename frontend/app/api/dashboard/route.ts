@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { fetchBackend } from '@/lib/server/backendBaseUrl';
 
 export async function GET() {
   try {
@@ -15,17 +16,21 @@ export async function GET() {
     }
 
     // Get dashboard data from backend
-    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8003'}/api/dashboard`, {
+    const backendResponse = await fetchBackend('/api/dashboard', {
       headers: {
         'Authorization': `Bearer ${token}`
       }
     });
 
     if (!backendResponse.ok) {
-      const errorData = await backendResponse.json();
+      const errorData = await backendResponse.json().catch(() => ({}));
       console.error('❌ Backend dashboard error:', errorData);
+      const message =
+        (errorData && errorData.error && errorData.error.message) ||
+        errorData.detail ||
+        'Failed to get dashboard data'
       return new NextResponse(
-        JSON.stringify({ message: errorData.detail || 'Failed to get dashboard data' }),
+        JSON.stringify({ message }),
         { status: backendResponse.status }
       );
     }

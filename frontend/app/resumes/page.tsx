@@ -1,127 +1,147 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { 
-  FileText,
-  Plus,
-  Upload,
-  Download,
-  Edit,
-  Trash2,
-  Star,
-  Loader2,
-  CheckCircle,
-  XCircle,
-  Target,
-  Mail,
-  GraduationCap,
-  Brain,
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, Upload } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { getAuthHeaders, isAuthenticated } from '@/lib/auth'
+import { useRequireAuth } from '@/hooks/useAuth'
+import { apiService } from '@/services/api'
+import type { ResumeHistoryResponse, ResumeListItem } from '@/lib/api/resume'
+import { ResumeListCard } from '@/components/resume/resume-list-card'
+import {
+  EmptyResumeLibrary,
+  ErrorStateCard,
+  ResumeListSkeleton,
+  ResumePageSpinner,
+} from '@/components/resume/resume-page-states'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
-interface Resume {
-  id: string;
-  filename: string;
-  company_name: string;
-  score: number;
-  created_at: string;
-  updated_at: string;
-  has_feedback: boolean;
-  has_cover_letter: boolean;
-  has_learning_path: boolean;
-  has_practice_exam: boolean;
+function listScore(r: ResumeListItem): number | null {
+  const raw = r.score ?? r.latest_score
+  if (raw == null || raw === '') return null
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
 }
 
-interface PaginationInfo {
-  page: number;
-  limit: number;
-  total: number;
-  pages: number;
+function isAnalyzed(r: ResumeListItem): boolean {
+  if (r.has_feedback) return true
+  return listScore(r) != null
 }
 
-interface ResumeHistoryResponse {
-  resumes: Resume[];
-  pagination: PaginationInfo;
+function listDate(r: ResumeListItem): string | undefined {
+  return (
+    (typeof r.updated_at === 'string' && r.updated_at) ||
+    (typeof r.upload_date === 'string' && r.upload_date) ||
+    (typeof r.created_at === 'string' && r.created_at) ||
+    undefined
+  )
 }
 
 export default function ResumesPage() {
   const router = useRouter()
-  const [resumes, setResumes] = useState<Resume[]>([])
-  const [pagination, setPagination] = useState<PaginationInfo>({
+  const { isAuthenticated, isLoading: authLoading } = useRequireAuth()
+  const [resumes, setResumes] = useState<ResumeListItem[]>([])
+  const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
     total: 0,
-    pages: 0
+    pages: 0,
   })
-  const [loading, setLoading] = useState(true)
+  const [initialLoad, setInitialLoad] = useState(true)
+  const [listLoading, setListLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showUploadModal, setShowUploadModal] = useState(false)
-  const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null)
+  const [deletingResumeId, setDeletingResumeId] = useState<string | null>(
+    null
+  )
+  const [analyzingResumeId, setAnalyzingResumeId] = useState<string | null>(
+    null
+  )
+  const analyzeInFlightRef = useRef(new Set<string>())
+  const lastAnalyzeClickAtRef = useRef(new Map<string, number>())
+  const resumeStripRef = useRef<HTMLDivElement>(null)
+  const [stripScrollState, setStripScrollState] = useState({
+    canLeft: false,
+    canRight: false,
+  })
 
-  useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push('/auth/signin')
-      return
-    }
-    
-    fetchResumes(1)
-  }, [])
-
-  const fetchResumes = async (page: number) => {
+  const fetchResumes = useCallback(async (page: number) => {
+    setError(null)
+    setListLoading(true)
     try {
-      setLoading(true)
-      const response = await fetch(`/api/resume/history?page=${page}&limit=10`, {
-        headers: getAuthHeaders()
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch resume history')
-      }
-
-      const data: ResumeHistoryResponse = await response.json()
+      const data: ResumeHistoryResponse = await apiService.getResumeHistoryPage(
+        page,
+        10
+      )
       setResumes(data.resumes)
       setPagination(data.pagination)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load resumes')
+      setError(
+        err instanceof Error ? err.message : 'Failed to load resume library'
+      )
     } finally {
-      setLoading(false)
+      setListLoading(false)
+      setInitialLoad(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return
+    void fetchResumes(1)
+  }, [authLoading, isAuthenticated, fetchResumes])
+
+  const updateStripScrollState = useCallback(() => {
+    const el = resumeStripRef.current
+    if (!el || resumes.length < 2) {
+      setStripScrollState({ canLeft: false, canRight: false })
+      return
+    }
+    const { scrollLeft, scrollWidth, clientWidth } = el
+    const max = scrollWidth - clientWidth
+    setStripScrollState({
+      canLeft: scrollLeft > 4,
+      canRight: scrollLeft < max - 4,
+    })
+  }, [resumes.length])
+
+  useEffect(() => {
+    updateStripScrollState()
+  }, [resumes, listLoading, updateStripScrollState])
+
+  const scrollResumeStrip = useCallback((direction: -1 | 1) => {
+    const el = resumeStripRef.current
+    if (!el) return
+    const delta = Math.max(240, Math.floor(el.clientWidth * 0.75)) * direction
+    el.scrollBy({ left: delta, behavior: 'smooth' })
+    window.setTimeout(updateStripScrollState, 320)
+  }, [updateStripScrollState])
 
   const handlePageChange = (newPage: number) => {
     if (newPage >= 1 && newPage <= pagination.pages) {
-      fetchResumes(newPage)
+      void fetchResumes(newPage)
     }
   }
 
   const handleDeleteResume = async (resumeId: string) => {
-    if (!confirm('Are you sure you want to delete this resume? This action cannot be undone.')) {
+    if (
+      !confirm(
+        'Delete this resume? This cannot be undone.'
+      )
+    ) {
       return
     }
-
+    setDeletingResumeId(resumeId)
+    setError(null)
     try {
-      setDeletingResumeId(resumeId)
-      const response = await fetch(`/api/resume/delete/${resumeId}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders()
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to delete resume')
+      const res = await apiService.deleteResume(resumeId)
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to delete resume')
       }
-
-      // Refresh the resume list
-      await fetchResumes(pagination.page)
-      
-      // If current page is empty after deletion, go to previous page
-      if (resumes.length === 1 && pagination.page > 1) {
-        await fetchResumes(pagination.page - 1)
-      }
-
+      const nextPage =
+        resumes.length === 1 && pagination.page > 1
+          ? pagination.page - 1
+          : pagination.page
+      await fetchResumes(nextPage)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete resume')
     } finally {
@@ -129,11 +149,45 @@ export default function ResumesPage() {
     }
   }
 
-  if (loading) {
+  const handleAnalyze = async (resumeId: string) => {
+    const now = Date.now()
+    const last = lastAnalyzeClickAtRef.current.get(resumeId) ?? 0
+    if (analyzeInFlightRef.current.has(resumeId)) return
+    if (now - last < 800) return
+    lastAnalyzeClickAtRef.current.set(resumeId, now)
+    analyzeInFlightRef.current.add(resumeId)
+
+    setAnalyzingResumeId(resumeId)
+    setError(null)
+    try {
+      const res = await apiService.analyzeResume(resumeId)
+      if (!res.success) {
+        throw new Error(res.error || 'Analysis failed')
+      }
+      await fetchResumes(pagination.page)
+      router.push(`/ai-feedback/${resumeId}`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Analysis failed')
+    } finally {
+      setAnalyzingResumeId(null)
+      analyzeInFlightRef.current.delete(resumeId)
+    }
+  }
+
+  if (authLoading) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        <ResumePageSpinner label="Checking your session…" />
+      </DashboardLayout>
+    )
+  }
+
+  if (initialLoad && listLoading) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto max-w-6xl space-y-6">
+          <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+          <ResumeListSkeleton count={4} />
         </div>
       </DashboardLayout>
     )
@@ -141,214 +195,156 @@ export default function ResumesPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold mb-2">Resume Library</h1>
-            <p className="text-gray-600 dark:text-gray-300">
-              Manage and organize your resumes with AI-powered features
+      <div className="mx-auto w-full max-w-6xl space-y-8 px-4 pb-10 pt-2 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-4 border-b border-border/60 pb-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              Resume library
+            </h1>
+            <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
+              Scores, analysis status, and quick actions for every upload. Use
+              the arrows to browse when you have more than one resume on this
+              page.
             </p>
           </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={() => router.push('/resumes/upload')}
-              className="flex items-center space-x-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90"
-            >
-              <Upload className="w-4 h-4" />
-              <span>Upload Resume</span>
-            </button>
-          </div>
+          <Button
+            type="button"
+            className="gap-2 self-start shadow-sm sm:self-auto"
+            onClick={() => router.push('/resumes/upload')}
+          >
+            <Upload className="h-4 w-4" aria-hidden />
+            Upload resume
+          </Button>
         </div>
 
-        {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-red-600 dark:text-red-400">{error}</p>
-          </div>
-        )}
+        {error ? (
+          <ErrorStateCard
+            title="Something went wrong"
+            message={error}
+            onRetry={() => fetchResumes(pagination.page)}
+          />
+        ) : null}
 
-        {/* Resume Grid */}
-        {resumes.length === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg">
-            <FileText className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-            <h2 className="text-2xl font-bold mb-2">No Resumes Found</h2>
-            <p className="text-gray-600 dark:text-gray-300 mb-6">
-              Upload your first resume to get started with AI analysis and feedback.
-            </p>
-            <button
-              onClick={() => router.push('/resumes/upload')}
-              className="btn-primary-fallback px-6 py-3 rounded-lg"
+        {!error && resumes.length === 0 && !listLoading ? (
+          <EmptyResumeLibrary onUpload={() => router.push('/resumes/upload')} />
+        ) : null}
+
+        {listLoading && !initialLoad ? (
+          <ResumeListSkeleton count={4} />
+        ) : null}
+
+        {!listLoading && resumes.length > 0 ? (
+          <div
+            className={cn(
+              'relative',
+              resumes.length > 1 && 'rounded-xl border border-border/70 bg-muted/20 p-2 sm:p-3'
+            )}
+          >
+            {resumes.length > 1 ? (
+              <>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="absolute left-1 top-1/2 z-20 h-10 w-10 -translate-y-1/2 rounded-full border border-border/80 bg-background/95 shadow-md backdrop-blur-sm hover:bg-background disabled:opacity-30 sm:left-2"
+                  aria-label="Scroll resumes left"
+                  disabled={!stripScrollState.canLeft}
+                  onClick={() => scrollResumeStrip(-1)}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="absolute right-1 top-1/2 z-20 h-10 w-10 -translate-y-1/2 rounded-full border border-border/80 bg-background/95 shadow-md backdrop-blur-sm hover:bg-background disabled:opacity-30 sm:right-2"
+                  aria-label="Scroll resumes right"
+                  disabled={!stripScrollState.canRight}
+                  onClick={() => scrollResumeStrip(1)}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Button>
+              </>
+            ) : null}
+            <div
+              ref={resumeStripRef}
+              onScroll={updateStripScrollState}
+              className={cn(
+                'flex gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 pt-1',
+                resumes.length > 1 &&
+                  'snap-x snap-mandatory px-11 sm:px-14 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+              )}
             >
-              Upload Your First Resume
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {resumes.map((resume) => (
-              <div
-                key={resume.id}
-                className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-1">{resume.company_name}</h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      {resume.filename} • Updated: {new Date(resume.updated_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {resume.score ? (
-                      <div className="flex items-center space-x-1 bg-primary/10 text-primary px-2 py-1 rounded">
-                        <Star className="w-4 h-4" />
-                        <span className="text-sm font-medium">{resume.score}/100</span>
-                      </div>
-                    ) : (
-                      <div className="text-sm text-gray-500 dark:text-gray-400">Not analyzed</div>
+              {resumes.map((resume) => {
+                const id = String(resume.id)
+                const score = listScore(resume)
+                const analyzed = isAnalyzed(resume)
+                return (
+                  <div
+                    key={id}
+                    className={cn(
+                      'min-w-0 shrink-0',
+                      resumes.length > 1
+                        ? 'w-[min(100%,22rem)] snap-center sm:w-[min(100%,24rem)]'
+                        : 'w-full max-w-3xl'
                     )}
-                    <button
-                      onClick={() => handleDeleteResume(resume.id)}
-                      disabled={deletingResumeId === resume.id}
-                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Delete resume"
-                    >
-                      {deletingResumeId === resume.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Status Indicators */}
-                <div className="grid grid-cols-2 gap-2 mb-4">
-                  <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
-                    resume.has_feedback 
-                      ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300' 
-                      : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                  }`}>
-                    {resume.has_feedback ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                    <span>Feedback</span>
-                  </div>
-                  
-                  <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
-                    resume.has_cover_letter 
-                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
-                      : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                  }`}>
-                    {resume.has_cover_letter ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                    <span>Cover Letter</span>
-                  </div>
-                  
-                  <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
-                    resume.has_learning_path 
-                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300' 
-                      : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                  }`}>
-                    {resume.has_learning_path ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                    <span>Learning Path</span>
-                  </div>
-                  
-                  <div className={`flex items-center space-x-2 text-xs px-2 py-1 rounded ${
-                    resume.has_practice_exam 
-                      ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300' 
-                      : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                  }`}>
-                    {resume.has_practice_exam ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                    <span>Practice Exam</span>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => router.push(`/ai-feedback/${resume.id}`)}
-                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      resume.has_feedback
-                        ? 'bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/30'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
                   >
-                    <Brain className="w-4 h-4" />
-                    <span>AI Feedback</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => router.push(`/cover-letters/${resume.id}`)}
-                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      resume.has_cover_letter
-                        ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/30'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    <Mail className="w-4 h-4" />
-                    <span>Cover Letter</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => router.push(`/learning-path/${resume.id}`)}
-                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      resume.has_learning_path
-                        ? 'bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/30'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    <GraduationCap className="w-4 h-4" />
-                    <span>Learning Path</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => router.push(`/practice-exam/${resume.id}`)}
-                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                      resume.has_practice_exam
-                        ? 'bg-orange-100 dark:bg-orange-900/20 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/30'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    <Target className="w-4 h-4" />
-                    <span>Practice Exam</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Pagination */}
-        {pagination.pages > 1 && (
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-gray-600 dark:text-gray-300">
-              Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
-              {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-              {pagination.total} resumes
+                    <ResumeListCard
+                      resume={resume}
+                      analyzed={analyzed}
+                      displayScore={score}
+                      dateIso={listDate(resume)}
+                      onView={() => router.push(`/ai-feedback/${id}`)}
+                      onAnalyze={() => void handleAnalyze(id)}
+                      onDelete={() => void handleDeleteResume(id)}
+                      isDeleting={deletingResumeId === id}
+                      isAnalyzing={analyzingResumeId === id}
+                    />
+                  </div>
+                )
+              })}
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handlePageChange(pagination.page - 1)}
+          </div>
+        ) : null}
+
+        {pagination.pages > 1 && !listLoading && resumes.length > 0 ? (
+          <div className="flex flex-col gap-3 border-t pt-6 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing {(pagination.page - 1) * pagination.limit + 1}–
+              {Math.min(
+                pagination.page * pagination.limit,
+                pagination.total
+              )}{' '}
+              of {pagination.total}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
                 disabled={pagination.page === 1}
-                className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => handlePageChange(pagination.page - 1)}
+                aria-label="Previous page"
               >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              
-              <span className="px-3 py-2 text-sm">
-                Page {pagination.page} of {pagination.pages}
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="min-w-[7rem] text-center text-sm tabular-nums">
+                Page {pagination.page} / {pagination.pages}
               </span>
-              
-              <button
-                onClick={() => handlePageChange(pagination.page + 1)}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
                 disabled={pagination.page === pagination.pages}
-                className="p-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => handlePageChange(pagination.page + 1)}
+                aria-label="Next page"
               >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-        )}
-
-
+        ) : null}
       </div>
     </DashboardLayout>
   )
-} 
+}

@@ -35,8 +35,8 @@ export default function SignUpPage() {
       return
     }
 
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters')
+    if (formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters')
       return
     }
 
@@ -88,7 +88,7 @@ export default function SignUpPage() {
       <div className="w-full md:w-1/2 p-8 flex items-center justify-center relative z-10">
         <div className="w-full max-w-md">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
@@ -101,9 +101,8 @@ export default function SignUpPage() {
           <motion.form 
             onSubmit={handleSubmit} 
             className="space-y-4"
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
           >
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-foreground">

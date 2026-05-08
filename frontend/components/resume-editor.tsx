@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
-import { useAuth } from '@/hooks/useAuth'
 
 interface ResumeEditorProps {
   resumeId: number
@@ -12,8 +11,9 @@ interface ResumeEditorProps {
   onSave: (content: string) => void
 }
 
+const sameOriginCredentials = { withCredentials: true }
+
 export default function ResumeEditor({ resumeId, initialContent, onSave }: ResumeEditorProps) {
-  const { user } = useAuth()
   const [content, setContent] = useState(initialContent)
   const [preview, setPreview] = useState('')
   const [loading, setLoading] = useState(false)
@@ -35,11 +35,7 @@ export default function ResumeEditor({ resumeId, initialContent, onSave }: Resum
         const response = await axios.post(
           '/api/resume/preview',
           { content: debouncedContent },
-          {
-            headers: {
-              Authorization: `Bearer ${(user as any)?.uid || 'placeholder'}`
-            }
-          }
+          sameOriginCredentials
         )
         setPreview(response.data.preview)
       } catch (error) {
@@ -52,18 +48,14 @@ export default function ResumeEditor({ resumeId, initialContent, onSave }: Resum
     if (debouncedContent) {
       updatePreview()
     }
-  }, [debouncedContent, user])
+  }, [debouncedContent])
 
   const handleSave = async () => {
     try {
       await axios.post(
         `/api/resume/${resumeId}/update`,
         { content },
-        {
-          headers: {
-            Authorization: `Bearer ${(user as any)?.uid || 'placeholder'}`
-          }
-        }
+        sameOriginCredentials
       )
       onSave(content)
       toast.success('Resume saved successfully')

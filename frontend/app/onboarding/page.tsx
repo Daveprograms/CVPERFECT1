@@ -25,6 +25,7 @@ import {
   FileText
 } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import { apiService } from '@/services/api'
 import * as THREE from 'three'
 
 interface OnboardingData {
@@ -319,7 +320,11 @@ export default function OnboardingPage() {
           )}
           <div className="text-center">
             <button
-              onClick={() => setData({ ...data, resumeFile: undefined })}
+              type="button"
+              onClick={() => {
+                setData((prev) => ({ ...prev, resumeFile: undefined }))
+                handleNext()
+              }}
               className="text-muted-foreground hover:text-foreground"
             >
               Skip for now
@@ -500,30 +505,29 @@ export default function OnboardingPage() {
   const handleSubmit = async () => {
     setLoading(true)
     try {
-      // Prepare the data
-      const onboardingData = {
-        ...data,
-        currentRole: data.currentRole === 'other' ? otherRole : data.currentRole
+      const current_role =
+        data.currentRole === 'other' ? otherRole.trim() : data.currentRole
+
+      // FastAPI / Pydantic expect snake_case (not camelCase)
+      const payload = {
+        current_role,
+        job_search_status: data.jobSearchStatus,
+        internship_date_range: data.internshipDateRange.trim() || null,
+        preferred_job_types: data.preferredJobTypes,
+        top_technologies: data.topTechnologies,
+        help_needed: data.helpNeeded,
+        linkedin_url: data.linkedinUrl.trim() || null,
+        github_url: data.githubUrl.trim() || null,
       }
 
-      // Submit to backend
-      const response = await fetch('/api/onboarding', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(onboardingData),
-      })
-
-      if (response.ok) {
-        toast.success('Onboarding completed! Welcome to CVPerfect!')
-        router.push('/dashboard')
-      } else {
-        throw new Error('Failed to save onboarding data')
-      }
+      await apiService.submitOnboarding(payload)
+      toast.success('Onboarding completed! Welcome to CVPerfect!')
+      router.push('/dashboard')
     } catch (error) {
       console.error('Onboarding error:', error)
-      toast.error('Failed to save your preferences. Please try again.')
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to save your preferences. Please try again.'
+      )
     } finally {
       setLoading(false)
     }

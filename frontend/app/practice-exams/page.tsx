@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Target, CheckCircle, Clock, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { getAuthHeaders, isAuthenticated } from '@/lib/auth'
+import { useRequireAuth } from '@/hooks/useAuth'
+import { apiService } from '@/services/api'
 
 interface Resume {
   id: string;
@@ -35,6 +36,7 @@ interface ResumeHistoryResponse {
 
 export default function PracticeExamsPage() {
   const router = useRouter()
+  const { isAuthenticated, isLoading: authLoading } = useRequireAuth()
   const [resumes, setResumes] = useState<Resume[]>([])
   const [pagination, setPagination] = useState<PaginationInfo>({
     page: 1,
@@ -46,20 +48,14 @@ export default function PracticeExamsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push('/auth/signin')
-      return
-    }
-    
+    if (authLoading || !isAuthenticated) return
     fetchResumes(1)
-  }, [])
+  }, [authLoading, isAuthenticated])
 
   const fetchResumes = async (page: number) => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/resume/history?page=${page}&limit=10`, {
-        headers: getAuthHeaders()
-      })
+      const response = await apiService.getResumeHistoryResponse(page, 10)
 
       if (!response.ok) {
         throw new Error('Failed to fetch resume history')
@@ -83,7 +79,7 @@ export default function PracticeExamsPage() {
 
   const practiceExamResumes = resumes.filter(resume => resume.has_practice_exam)
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">

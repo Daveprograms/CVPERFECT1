@@ -10,6 +10,8 @@ from dataclasses import dataclass
 import google.generativeai as genai
 from ..utils.text_processing import extract_keywords, calculate_text_similarity, clean_text
 
+_GEMINI_MODEL = "gemini-2.5-flash"
+
 
 @dataclass
 class JobMatch:
@@ -42,8 +44,9 @@ class JobMatcher:
     def __init__(self, gemini_api_key: str):
         self.gemini_api_key = gemini_api_key
         genai.configure(api_key=gemini_api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')  # Using existing model
         self.logger = logging.getLogger(__name__)
+        self.logger.info("[gemini] JobMatcher init model=%r", _GEMINI_MODEL)
+        self.model = genai.GenerativeModel(_GEMINI_MODEL)
     
     async def match_jobs(
         self, 
@@ -151,6 +154,10 @@ class JobMatcher:
         """
         
         try:
+            self.logger.info(
+                "[gemini] generate_content call context=job_match_analysis model=%r",
+                _GEMINI_MODEL,
+            )
             response = self.model.generate_content(analysis_prompt)
             analysis_text = response.text.strip()
             
@@ -299,6 +306,10 @@ class JobMatcher:
             }}
             """
             
+            self.logger.info(
+                "[gemini] generate_content call context=career_recommendations model=%r",
+                _GEMINI_MODEL,
+            )
             response = self.model.generate_content(recommendation_prompt)
             analysis_text = response.text.strip()
             

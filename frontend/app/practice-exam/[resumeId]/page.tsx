@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Clock, Target, CheckCircle, AlertCircle, FileText, BookOpen } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { getAuthHeaders, isAuthenticated } from '@/lib/auth'
+import { useRequireAuth } from '@/hooks/useAuth'
+import { apiService } from '@/services/api'
 
 interface PracticeExam {
   exam_info: {
@@ -41,27 +42,22 @@ interface Resume {
 export default function PracticeExamPage() {
   const params = useParams()
   const router = useRouter()
+  const { isAuthenticated, isLoading: authLoading } = useRequireAuth()
   const resumeId = params.resumeId as string
-  
+
   const [resume, setResume] = useState<Resume | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set())
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push('/auth/signin')
-      return
-    }
-    
+    if (authLoading || !isAuthenticated) return
     fetchResumeData()
-  }, [resumeId])
+  }, [resumeId, authLoading, isAuthenticated])
 
   const fetchResumeData = async () => {
     try {
-      const response = await fetch(`/api/resume/${resumeId}`, {
-        headers: getAuthHeaders()
-      })
+      const response = await apiService.getResume(resumeId)
 
       if (!response.ok) {
         throw new Error('Failed to fetch resume data')
@@ -86,7 +82,7 @@ export default function PracticeExamPage() {
     setExpandedQuestions(newExpanded)
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">

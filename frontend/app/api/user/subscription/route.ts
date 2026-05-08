@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function GET() {
   try {
@@ -14,7 +15,7 @@ export async function GET() {
     }
 
     // Fetch real subscription data from backend
-    const response = await fetch(`${process.env.BACKEND_URL}/api/auth/subscription-status`, {
+    const response = await fetchBackend('/api/auth/subscription-status', {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function GET(
   request: NextRequest,
@@ -11,7 +12,7 @@ export async function GET(
   
   try {
     const cookieStore = cookies()
-    const token = cookieStore.get('access_token')?.value
+    const token = cookieStore.get('auth_token')?.value
     
     console.log('🍪 Access token found:', !!token)
     console.log('🍪 Token preview:', token ? `${token.substring(0, 20)}...` : 'null')
@@ -28,12 +29,11 @@ export async function GET(
     console.log('📄 Format requested:', format)
     console.log('🔗 Search params:', JSON.stringify(Object.fromEntries(searchParams.entries()), null, 2))
 
-    const backendUrl = `${process.env.BACKEND_URL}/resumes/download/${resumeId}?format=${format}`
-    console.log('🌐 Backend URL:', backendUrl)
-    console.log('🌐 Environment BACKEND_URL:', process.env.BACKEND_URL)
+    const path = `/api/resume/download/${resumeId}?format=${format}`
+    console.log('🌐 Backend path:', path)
 
     console.log('📤 Making request to backend...')
-    const response = await fetch(backendUrl, {
+    const response = await fetchBackend(path, {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json'

@@ -85,10 +85,12 @@ async def startup_event():
         print("Database connectivity: OK")
     except Exception as e:
         err_preview = str(e).replace("\n", " ")[:240]
-        print("Database connectivity: FAILED — fix DATABASE_URL in backend/.env, then restart.")
+        print(
+            "Database connectivity: FAILED - fix DATABASE_URL in backend/.env, then restart."
+        )
         print(f"  Details: {err_preview}")
         print(
-            "  Hint: Supabase → Settings → Database → copy the current pooler URI; "
+            "  Hint: Supabase -> Settings -> Database -> copy the current pooler URI; "
             "ensure the project is not paused."
         )
 

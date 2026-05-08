@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
+import { apiService } from '@/services/api'
 
 interface ResumeSnapshotProps {
   content: string
@@ -17,11 +18,7 @@ export function ResumeSnapshot({ content }: ResumeSnapshotProps) {
 
     setLoading(true)
     try {
-      const response = await fetch('/api/resume/export', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, format })
-      })
+      const response = await apiService.exportResumeBlob({ content, format })
 
       if (!response.ok) {
         throw new Error('Failed to export resume')

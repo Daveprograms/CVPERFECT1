@@ -61,7 +61,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full md:w-1/2 p-8 flex items-center justify-center relative z-10">
         <div className="w-full max-w-md">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-8"
           >
@@ -75,9 +75,8 @@ export default function ForgotPasswordPage() {
             <motion.form 
               onSubmit={handleSubmit} 
               className="space-y-4"
-              initial={{ opacity: 0, y: 20 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
             >
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-foreground">
@@ -105,7 +104,7 @@ export default function ForgotPasswordPage() {
             </motion.form>
           ) : (
             <motion.div
-              initial={{ opacity: 0 }}
+              initial={false}
               animate={{ opacity: 1 }}
               className="text-center"
             >

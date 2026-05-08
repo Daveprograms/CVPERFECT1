@@ -6,8 +6,11 @@
     "node": ">=18.17.0"
   },
   "scripts": {
+    "clean:next": "node scripts/clean-next.cjs",
     "dev": "next dev",
+    "dev:clean": "npm run clean:next && next dev",
     "build": "next build",
+    "build:clean": "npm run clean:next && next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -19,8 +22,6 @@
     "@tailwindcss/forms": "^0.5.7",
     "@tailwindcss/typography": "^0.5.10",
     "@tanstack/react-query": "^5.83.0",
-    "@tanstack/react-query-devtools": "^5.90.2",
-    "@types/nodemailer": "^6.4.17",
     "@types/three": "^0.178.1",
     "axios": "^1.5.0",
     "class-variance-authority": "^0.7.1",
@@ -31,7 +32,6 @@
     "lucide-react": "^0.511.0",
     "next": "14.0.0",
     "next-themes": "^0.2.1",
-    "nodemailer": "^7.0.3",
     "react": "^18",
     "react-dom": "^18",
     "react-hot-toast": "^2.4.1",
@@ -43,13 +43,15 @@
     "tailwindcss": "^3.3.3",
     "tailwindcss-animate": "^1.0.7",
     "three": "^0.178.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@babel/core": "^7.27.4",
     "@babel/plugin-proposal-class-properties": "^7.18.6",
     "@babel/plugin-proposal-private-methods": "^7.18.6",
     "@babel/preset-env": "^7.27.2",
+    "@tanstack/react-query-devtools": "^5.100.9",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import { apiService } from '@/services/api'
 
 export function PromoCodeInput() {
   const [code, setCode] = useState('')
@@ -15,13 +16,7 @@ export function PromoCodeInput() {
 
     setLoading(true)
     try {
-      const response = await fetch('/api/validate-developer-code', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code: code.trim() }),
-      })
+      const response = await apiService.validateDeveloperCode(code.trim())
 
       const data = await response.json()
 

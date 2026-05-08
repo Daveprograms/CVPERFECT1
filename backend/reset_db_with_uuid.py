@@ -1,63 +1,57 @@
 #!/usr/bin/env python3
 """
-Script to reset database with UUID schema
+Drop all ORM tables and recreate them (PostgreSQL only). Run from backend/.
+
+Usage:
+  python reset_db_with_uuid.py
 """
 import os
 import sys
-from sqlalchemy import create_engine, text
+from pathlib import Path
+
 from dotenv import load_dotenv
+from sqlalchemy import create_engine
 
-# Add the app directory to the path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'app'))
+_BACKEND_ROOT = Path(__file__).resolve().parent
+sys.path.insert(0, str(_BACKEND_ROOT))
 
-# Load environment variables
-load_dotenv('env')
+load_dotenv(_BACKEND_ROOT / ".env")
+load_dotenv(_BACKEND_ROOT / "env")
 
-def reset_database():
-    """Reset database with new UUID schema"""
+
+def _normalize_url(url: str) -> str:
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
+
+
+def reset_database() -> bool:
     database_url = os.getenv("DATABASE_URL")
     if not database_url:
-        print("❌ DATABASE_URL not found in environment")
-        return False
-    
-    # Update URL to use psycopg instead of psycopg2
-    if database_url.startswith("postgresql://"):
-        database_url = database_url.replace("postgresql://", "postgresql+psycopg://")
-    
-    try:
-        engine = create_engine(database_url)
-        
-        with engine.connect() as conn:
-            print("🗑️ Dropping existing tables...")
-            
-            # Drop tables in correct order (reverse of dependencies)
-            tables_to_drop = [
-                'analytics',
-                'resume_versions', 
-                'resumes',
-                'users'
-            ]
-            
-            for table in tables_to_drop:
-                try:
-                    conn.execute(text(f"DROP TABLE IF EXISTS {table} CASCADE;"))
-                    print(f"   ✅ Dropped {table}")
-                except Exception as e:
-                    print(f"   ⚠️ Could not drop {table}: {e}")
-            
-            conn.commit()
-            print("✅ Database reset completed")
-            return True
-            
-    except Exception as e:
-        print(f"❌ Error resetting database: {str(e)}")
+        print("DATABASE_URL is required (PostgreSQL).")
         return False
 
+    database_url = _normalize_url(database_url)
+    if not database_url.startswith("postgresql+psycopg://"):
+        print("Only PostgreSQL URLs are supported.")
+        return False
+
+    from app.database import Base
+    import app.models  # noqa: F401
+
+    try:
+        engine = create_engine(database_url)
+        print("Dropping all tables registered on Base.metadata...")
+        Base.metadata.drop_all(bind=engine)
+        print("Recreating tables...")
+        Base.metadata.create_all(bind=engine)
+        print("Database reset complete.")
+        return True
+    except Exception as e:
+        print("Error resetting database:", e)
+        return False
+
+
 if __name__ == "__main__":
-    print("🔧 Resetting database with UUID schema...")
-    success = reset_database()
-    if success:
-        print("🎉 Database reset completed! Restart the backend to recreate tables.")
-    else:
-        print("💥 Database reset failed!")
-        sys.exit(1) 
+    ok = reset_database()
+    sys.exit(0 if ok else 1)

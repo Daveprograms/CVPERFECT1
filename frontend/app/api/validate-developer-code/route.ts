@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = cookies()
-    const token = cookieStore.get('access_token')?.value
+    const token = cookieStore.get('auth_token')?.value
 
     const { code } = await request.json()
 
@@ -15,14 +16,14 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // If no token, use a test token for developer code validation
-    const authToken = token || 'test-token-for-developer-code'
+    if (!token) {
+      return NextResponse.json({ success: false, message: 'Authentication required' }, { status: 401 })
+    }
 
-    // Forward the request to the backend
-    const response = await fetch(`${process.env.BACKEND_URL}/api/auth/validate-developer-code`, {
+    const response = await fetchBackend('/api/auth/validate-developer-code', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${authToken}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ code })

@@ -33,6 +33,7 @@ import {
   User as UserIcon
 } from 'lucide-react'
 import DarkModeToggle from './DarkModeToggle'
+import { cn } from '@/lib/utils'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -190,7 +191,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const isGroupExpanded = (groupTitle: string) => expandedGroups.includes(groupTitle)
 
   return (
-    <div className="bg-background">
+    <div className="flex min-h-screen overflow-x-hidden bg-background">
       {/* Mobile sidebar overlay */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -204,102 +205,101 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0">
-        <div className="flex h-full flex-col">
-          {/* Logo */}
-          <div className="flex h-16 items-center justify-between px-6 border-b border-border">
-            <Link href="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center">
+      {/* Sidebar: drawer on mobile, fixed column on desktop (must stay in flex row — not lg:static without flex parent) */}
+      <div
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex w-64 flex-shrink-0 flex-col border-r border-border bg-card shadow-xl transition-transform duration-300 ease-in-out lg:static lg:z-0 lg:translate-x-0 lg:shadow-none',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        )}
+      >
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-4 sm:px-5">
+            <Link
+              href="/dashboard"
+              className="flex min-w-0 items-center gap-2"
+              onClick={() => setSidebarOpen(false)}
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-purple-600">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
-              <span className="text-xl font-bold gradient-text">CVPerfect</span>
+              <span className="truncate text-lg font-bold gradient-text">
+                CVPerfect
+              </span>
             </Link>
             <button
+              type="button"
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden btn btn-ghost btn-sm p-2"
+              className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground lg:hidden"
+              aria-label="Close sidebar"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 space-y-2 px-3 py-4 overflow-y-auto">
+          <nav className="min-h-0 flex-1 space-y-2 overflow-y-auto px-2 py-3 sm:px-3">
             {navigationGroups.map((group) => (
               <div key={group.title} className="space-y-1">
                 <button
+                  type="button"
                   onClick={() => toggleGroup(group.title)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent rounded-lg transition-colors"
+                  className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 >
-                  <span className="flex items-center">
-                    <span className="mr-2">{group.title.split(' ')[0]}</span>
-                    <span className="text-xs">{group.title.split(' ').slice(1).join(' ')}</span>
-                  </span>
-                  <ChevronDown 
-                    className={`h-4 w-4 transition-transform ${isGroupExpanded(group.title) ? 'rotate-180' : ''}`}
+                  <span className="min-w-0 truncate">{group.title}</span>
+                  <ChevronDown
+                    className={cn(
+                      'h-4 w-4 shrink-0 transition-transform',
+                      isGroupExpanded(group.title) && 'rotate-180'
+                    )}
                   />
                 </button>
-                
-                <AnimatePresence>
-                  {isGroupExpanded(group.title) && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="space-y-1 ml-4"
-                    >
-                      {group.items.map((item) => {
-                        const isActive = pathname === item.href
-                        return (
-                          <Link
-                            key={item.name}
-                            href={item.href}
-                            className={`group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                              isActive
-                                ? 'bg-primary text-primary-foreground'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                            }`}
-                          >
-                            <item.icon className="mr-3 h-4 w-4" />
-                            {item.name}
-                            {isActive && (
-                              <ChevronRight className="ml-auto h-4 w-4" />
-                            )}
-                          </Link>
-                        )
-                      })}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+
+                {isGroupExpanded(group.title) && (
+                  <div className="space-y-0.5 border-l border-border/60 pl-2 ml-2">
+                    {group.items.map((item) => {
+                      const isActive = pathname === item.href
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          onClick={() => setSidebarOpen(false)}
+                          className={cn(
+                            'flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                            isActive
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                          )}
+                        >
+                          <item.icon className="h-4 w-4 shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                          {isActive ? (
+                            <ChevronRight className="h-4 w-4 shrink-0 opacity-80" />
+                          ) : null}
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </nav>
 
-          {/* User Menu */}
-          <div className="border-t border-border p-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center">
+          <div className="shrink-0 border-t border-border p-3 sm:p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-purple-600">
                 <User className="h-4 w-4 text-white" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">Developer</p>
-                <p className="text-xs text-muted-foreground">Pro Plan</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">Developer</p>
+                <p className="truncate text-xs text-muted-foreground">Pro Plan</p>
               </div>
-              <div className="flex items-center space-x-1">
+              <div className="flex shrink-0 items-center gap-0.5">
                 <DarkModeToggle />
-                <button 
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="btn btn-ghost btn-sm p-1 relative"
+                <Link
+                  href="/settings"
+                  className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                  aria-label="Settings"
+                  onClick={() => setSidebarOpen(false)}
                 >
-                  <Bell className="h-4 w-4" />
-                  {notifications.length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 text-white text-xs rounded-full flex items-center justify-center text-[8px]">
-                      {notifications.length}
-                    </span>
-                  )}
-                </button>
-                <Link href="/settings" className="btn btn-ghost btn-sm p-1">
                   <Settings className="h-4 w-4" />
                 </Link>
               </div>
@@ -308,80 +308,98 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="lg:pl-64">
-        {/* Top Bar */}
-        <div className="sticky top-0 z-40 flex h-16 items-center gap-x-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 sm:gap-x-6 sm:px-6 lg:px-8">
+      {/* Main column: fills remaining width; no duplicate pl-64 (sidebar is a real flex sibling on lg) */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-x-3 border-b border-border bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/75 sm:h-16 sm:gap-x-4 sm:px-4 lg:px-6">
           <button
             type="button"
-            className="-m-2.5 p-2.5 text-muted-foreground lg:hidden"
+            className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground lg:hidden"
             onClick={() => setSidebarOpen(true)}
           >
             <span className="sr-only">Open sidebar</span>
             <Menu className="h-6 w-6" />
           </button>
 
-          <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
-            <div className="flex flex-1"></div>
-            <div className="flex items-center gap-x-4 lg:gap-x-6">
-              <div className="relative">
-                <button 
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="btn btn-ghost btn-sm relative"
-                >
-                  <Bell className="h-5 w-5" />
-                  {notifications.length > 0 && (
-                    <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                      {notifications.length}
-                    </span>
-                  )}
-                </button>
-                
-                {/* Notifications Dropdown */}
-                {showNotifications && (
-                  <div className="absolute right-0 top-full mt-2 w-80 bg-background border border-border rounded-lg shadow-lg z-50" ref={notificationRef}>
-                    <div className="p-4 border-b border-border">
-                      <h3 className="font-semibold">Notifications</h3>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto">
-                      {notifications.map((notification) => (
-                        <div key={notification.id} className="p-4 border-b border-border last:border-b-0 hover:bg-accent">
-                          <div className="flex items-start space-x-3">
-                            <div className={`w-2 h-2 rounded-full mt-2 ${
-                              notification.type === 'success' ? 'bg-green-500' : 'bg-blue-500'
-                            }`} />
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{notification.message}</p>
-                              <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
-                            </div>
-                            <button 
-                              onClick={() => setNotifications(prev => prev.filter(n => n.id !== notification.id))}
-                              className="text-muted-foreground hover:text-foreground"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {notifications.length === 0 && (
-                      <div className="p-4 text-center text-muted-foreground">
-                        No notifications
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="hidden lg:block lg:h-6 lg:w-px lg:bg-border" />
-              <Link href="/settings" className="btn btn-ghost btn-sm">
-                <User className="h-5 w-5" />
-              </Link>
-            </div>
-          </div>
-        </div>
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-x-2 sm:gap-x-3">
+            <div className="relative" ref={notificationRef}>
+              <button
+                type="button"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+                aria-label="Notifications"
+              >
+                <Bell className="h-5 w-5" />
+                {notifications.length > 0 ? (
+                  <span className="absolute right-1 top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-medium text-destructive-foreground">
+                    {notifications.length}
+                  </span>
+                ) : null}
+              </button>
 
-        {/* Page Content */}
-        <main className="pb-8">
+              {showNotifications ? (
+                <div className="absolute right-0 top-full z-50 mt-2 w-[min(100vw-2rem,20rem)] rounded-lg border border-border bg-popover shadow-lg">
+                  <div className="border-b border-border p-3">
+                    <h3 className="text-sm font-semibold">Notifications</h3>
+                  </div>
+                  <div className="max-h-64 overflow-y-auto">
+                    {notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className="border-b border-border p-3 last:border-b-0 hover:bg-accent/80"
+                      >
+                        <div className="flex items-start gap-2">
+                          <div
+                            className={cn(
+                              'mt-1.5 h-2 w-2 shrink-0 rounded-full',
+                              notification.type === 'success'
+                                ? 'bg-green-500'
+                                : 'bg-blue-500'
+                            )}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium leading-snug">
+                              {notification.message}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {notification.time}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setNotifications((prev) =>
+                                prev.filter((n) => n.id !== notification.id)
+                              )
+                            }
+                            className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            aria-label="Dismiss"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">
+                      No notifications
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            <div className="hidden h-6 w-px bg-border sm:block" />
+            <Link
+              href="/settings"
+              className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground"
+              aria-label="Account"
+            >
+              <User className="h-5 w-5" />
+            </Link>
+          </div>
+        </header>
+
+        <main className="min-h-0 flex-1 overflow-y-auto pb-10 pt-4 sm:pt-6">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             {children}
           </div>

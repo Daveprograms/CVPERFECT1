@@ -517,6 +517,11 @@ class ExamContentScraper:
             Make questions practical, relevant, and interview-appropriate.
             """
             
+            model_name = getattr(self.gemini_service, "_model_name", "unknown")
+            logger.info(
+                "[gemini] generate_content call context=exam_ai_fallback model=%r",
+                model_name,
+            )
             response = self.gemini_service.model.generate_content(prompt)
             response_text = response.text.strip()
             

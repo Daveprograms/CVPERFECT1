@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
+
+const BACKEND_FETCH_TIMEOUT_MS = 30_000
 
 export async function GET(req: Request) {
   try {
@@ -15,10 +18,11 @@ export async function GET(req: Request) {
     }
 
     // Get onboarding status from backend
-    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8003'}/api/onboarding/status`, {
+    const backendResponse = await fetchBackend('/api/onboarding/status', {
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
+      signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
     })
 
     if (!backendResponse.ok) {

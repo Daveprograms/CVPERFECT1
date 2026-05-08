@@ -3,6 +3,7 @@ Job Application Model
 Tracks user job applications and their status
 """
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, ForeignKey, Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -24,8 +25,8 @@ class JobApplication(Base):
     """Job Application model"""
     __tablename__ = "job_applications"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     
     # Job details
     company_name = Column(String, nullable=False)
@@ -43,7 +44,7 @@ class JobApplication(Base):
     
     # User notes and resume used
     notes = Column(Text)
-    resume_id = Column(String, ForeignKey("resumes.id"))
+    resume_id = Column(UUID(as_uuid=True), ForeignKey("resumes.id"), nullable=True, index=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

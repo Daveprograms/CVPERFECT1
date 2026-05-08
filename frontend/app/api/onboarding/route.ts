@@ -1,5 +1,17 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
+
+/** Backend uses custom handlers: { error: { message } } not always { detail }. */
+function messageFromBackendError(data: unknown): string {
+  if (!data || typeof data !== 'object') return 'Failed to save onboarding data'
+  const d = data as Record<string, unknown>
+  if (typeof d.detail === 'string') return d.detail
+  const nested = d.error as Record<string, unknown> | undefined
+  if (nested && typeof nested.message === 'string') return nested.message
+  if (typeof d.message === 'string') return d.message
+  return 'Failed to save onboarding data'
+}
 
 export async function POST(req: Request) {
   try {
@@ -19,7 +31,7 @@ export async function POST(req: Request) {
     }
 
     // Send data to backend
-    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8003'}/api/onboarding`, {
+    const backendResponse = await fetchBackend('/api/onboarding', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -29,12 +41,12 @@ export async function POST(req: Request) {
     })
 
     if (!backendResponse.ok) {
-      const errorData = await backendResponse.json()
+      const errorData = await backendResponse.json().catch(() => ({}))
       console.error('❌ Backend onboarding error:', errorData)
-      return new NextResponse(
-        JSON.stringify({ message: errorData.detail || 'Failed to save onboarding data' }),
-        { status: backendResponse.status }
-      )
+      const msg = messageFromBackendError(errorData)
+      return new NextResponse(JSON.stringify({ message: msg, detail: msg }), {
+        status: backendResponse.status,
+      })
     }
 
     const result = await backendResponse.json()

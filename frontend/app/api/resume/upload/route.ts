@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function POST(req: Request) {
   try {
@@ -42,8 +43,7 @@ export async function POST(req: Request) {
     console.log('6. Sending request to backend...')
 
     // Forward the request to the backend
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-    const response = await fetch(`${backendUrl}/api/resume/upload`, {
+    const response = await fetchBackend('/api/resume/upload', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`

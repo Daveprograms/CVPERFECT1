@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { resolveBearer } from '@/lib/server-auth'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function POST(
   request: NextRequest,
@@ -15,11 +17,13 @@ export async function POST(
       )
     }
 
-    // Get auth token from session/cookies
-    const authHeader = request.headers.get('authorization') || ''
-    
+    const authHeader = resolveBearer(request) || ''
+    if (!authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+    }
+
     // Call backend API
-    const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8001'}/api/resume/learning-path/${params.id}`, {
+    const backendResponse = await fetchBackend(`/api/resume/learning-path/${params.id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

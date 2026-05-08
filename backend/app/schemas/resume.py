@@ -1,6 +1,7 @@
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, HttpUrl, Field, ConfigDict
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from uuid import UUID
 
 class ResumeBase(BaseModel):
     job_description: Optional[str] = None
@@ -25,23 +26,25 @@ class ResumeVersionResponse(ResumeVersionBase):
         from_attributes = True
 
 class ResumeResponse(ResumeBase):
-    id: int
-    user_id: int
-    original_content: str
-    enhanced_content: Optional[str] = None
-    score: Optional[float] = None
-    feedback: Optional[Dict[str, Any]] = None
-    extracted_info: Optional[Dict[str, Any]] = None
-    job_matches: Optional[List[Dict[str, Any]]] = None
-    improvements: Optional[List[Dict[str, Any]]] = None
-    cover_letter: Optional[str] = None
-    learning_path: Optional[Dict[str, Any]] = None
-    created_at: datetime
-    updated_at: datetime
-    versions: List[ResumeVersionResponse] = []
+    """
+    Serialized `models.resume.Resume` for GET /api/resume/{id} and GET /api/resume/list.
+    Must match the SQLAlchemy columns (UUID ids, `content`, etc.).
+    """
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    user_id: UUID
+    filename: str
+    content: str
+    file_type: str
+    character_count: int = 0
+    upload_date: Optional[datetime] = None
+    processing_status: Optional[str] = "pending"
+
+class ResumeContentUpdate(BaseModel):
+    content: str
+
 
 class ResumeEnhanceRequest(BaseModel):
     job_description: Optional[str] = None
@@ -54,7 +57,13 @@ class ResumeScoreResponse(BaseModel):
     job_matches: List[Dict[str, Any]]
 
 class CoverLetterRequest(BaseModel):
-    job_description: str
+    """Used for cover letter, learning path, and practice exam; extra fields ignored where unused."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    job_description: Optional[str] = None
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
     company_info: Optional[Dict[str, Any]] = None
 
 class CoverLetterResponse(BaseModel):

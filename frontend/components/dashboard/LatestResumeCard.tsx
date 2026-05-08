@@ -8,8 +8,8 @@ interface LatestResumeCardProps {
   resume?: {
     id: string;
     filename: string;
-    score: number;
-    ats_score: number;
+    score: number | null;
+    ats_score: number | null;
     updated_at: string;
   };
   onViewResume?: (id: string) => void;
@@ -42,7 +42,8 @@ export function LatestResumeCard({ resume, onViewResume, onAnalyzeResume }: Late
     );
   }
 
-  const getScoreColor = (score: number) => {
+  const getScoreColor = (score: number | null) => {
+    if (score == null || Number.isNaN(score)) return 'text-muted-foreground';
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
@@ -90,13 +91,13 @@ export function LatestResumeCard({ resume, onViewResume, onAnalyzeResume }: Late
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center p-3 bg-muted/50 rounded-lg">
             <div className={`text-2xl font-bold ${getScoreColor(resume.score)}`}>
-              {resume.score}%
+              {resume.score != null ? `${resume.score}%` : '—'}
             </div>
             <div className="text-xs text-muted-foreground">Overall Score</div>
           </div>
           <div className="text-center p-3 bg-muted/50 rounded-lg">
-            <div className="text-2xl font-bold text-blue-600">
-              {resume.ats_score}%
+            <div className={`text-2xl font-bold ${resume.ats_score != null ? 'text-blue-600' : 'text-muted-foreground'}`}>
+              {resume.ats_score != null ? `${resume.ats_score}%` : '—'}
             </div>
             <div className="text-xs text-muted-foreground">ATS Score</div>
           </div>
@@ -106,7 +107,15 @@ export function LatestResumeCard({ resume, onViewResume, onAnalyzeResume }: Late
           <span className="text-muted-foreground">Performance</span>
           <div className="flex items-center space-x-1">
             <TrendingUp className="h-4 w-4 text-green-600" />
-            <span className="text-green-600 font-medium">Good</span>
+            <span className="text-green-600 font-medium">
+              {resume.score == null
+                ? 'Run analysis'
+                : resume.score >= 80
+                  ? 'Strong'
+                  : resume.score >= 60
+                    ? 'Good'
+                    : 'Needs work'}
+            </span>
           </div>
         </div>
       </div>

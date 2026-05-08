@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import Stripe from 'stripe'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2023-10-16'
@@ -27,17 +28,14 @@ export async function POST(req: Request) {
     }
 
     // Forward the event to the backend
-    const response = await fetch(
-      `${process.env.BACKEND_URL}/api/stripe/webhook`,
-      {
+    const response = await fetchBackend('/api/stripe/webhook', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Stripe-Signature': signature
         },
         body
-      }
-    )
+      })
 
     if (!response.ok) {
       throw new Error('Failed to process webhook on backend')

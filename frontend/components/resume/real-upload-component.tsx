@@ -39,53 +39,46 @@ export const RealUploadComponent: React.FC = () => {
         throw new Error(validation.error);
       }
 
-      // Create form data for real file upload
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // Stage 1: Upload file
       setUploadProgress({
         progress: 20,
         stage: 'uploading',
         message: 'Uploading your resume...'
       });
 
-      const uploadResponse = await apiService.uploadResume(formData);
+      const uploadResult = await apiService.uploadResume(file);
+      if (!uploadResult.success || !uploadResult.data) {
+        throw new Error(uploadResult.error || 'Upload failed');
+      }
 
-      // Stage 2: Processing file (real PDF/DOCX extraction)
+      const uploadData = uploadResult.data;
+      const resumeId = uploadData.resume_id;
+
       setUploadProgress({
         progress: 50,
         stage: 'processing',
         message: 'Extracting text from your resume...'
       });
 
-      // Simulate processing time for real file extraction
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Stage 3: AI Analysis with existing Gemini
       setUploadProgress({
         progress: 80,
-        stage: 'analyzing',
-        message: 'Analyzing with AI (this may take a moment)...'
+        stage: 'processing',
+        message: 'Finalizing your upload...'
       });
 
-      // Trigger AI analysis
-      if (uploadResponse.resume_id) {
-        try {
-          await apiService.analyzeResume(uploadResponse.resume_id);
-        } catch (analysisError) {
-          console.warn('AI analysis will be available shortly:', analysisError);
-        }
-      }
-
-      // Stage 4: Complete
       setUploadProgress({
         progress: 100,
         stage: 'complete',
         message: 'Resume processing complete!'
       });
 
-      return uploadResponse;
+      return {
+        resume_id: resumeId,
+        content: '',
+        character_count: uploadData.character_count ?? 0,
+        processing_status: (uploadData as { processing_status?: string }).processing_status ?? 'complete',
+      };
     },
     onSuccess: (result) => {
       setProcessedResume(result);

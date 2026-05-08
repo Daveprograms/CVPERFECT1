@@ -111,3 +111,38 @@ Coverage should be > 80% for new modules.
 - Rate limiting on all endpoints
 - Redis caching with fallback
 - Comprehensive unit tests
+
+---
+
+## Resume system (Phase 3) — API map
+
+All routes are under the FastAPI prefix **`/api/resume`**. The Next.js BFF mirrors them under **`/api/resume/...`** (same-origin from the browser).
+
+| Step | Backend | Next BFF (browser calls) |
+|------|-----------|----------------------------|
+| Upload | `POST /api/resume/upload` | `POST /api/resume/upload` |
+| Analyze | `POST /api/resume/analyze/{id}` | `POST /api/resume/analyze/{id}` |
+| Latest analysis JSON | `GET /api/resume/analyze/{id}` | `GET /api/resume/analyze/{id}` |
+| Single resume record | `GET /api/resume/{id}` | `GET /api/resume/{id}` |
+| Paginated library | `GET /api/resume/history?page=&limit=` | `GET /api/resume/history?...` |
+| AI “fix / enhance” (body) | `POST /api/resume/fix` JSON `{ "resume_id", "job_description?" }` | `POST /api/resume/fix` (same body) |
+| Enhance (path) | `POST /api/resume/enhance/{id}?job_description=` | optional direct proxy |
+
+**Example (curl — replace `TOKEN` and host):**
+
+```bash
+# One resume (metadata + `content` for the owner)
+curl -sS -H "Authorization: Bearer TOKEN" \
+  "http://127.0.0.1:8001/api/resume/RESUME_UUID_HERE"
+
+# Library page
+curl -sS -H "Authorization: Bearer TOKEN" \
+  "http://127.0.0.1:8001/api/resume/history?page=1&limit=10"
+
+# Fix / enhance (JSON body)
+curl -sS -X POST -H "Authorization: Bearer TOKEN" -H "Content-Type: application/json" \
+  -d "{\"resume_id\":\"RESUME_UUID_HERE\",\"job_description\":\"optional\"}" \
+  "http://127.0.0.1:8001/api/resume/fix"
+```
+
+**Frontend usage:** `apiService.getResumeRecord(id)`, `apiService.getResumeHistoryPage(page, limit)`, `apiService.analyzeResume(id)`, `apiService.fixResume({ resume_id, job_description })` in `frontend/services/api.ts`.

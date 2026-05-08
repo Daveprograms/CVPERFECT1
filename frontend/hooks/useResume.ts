@@ -7,26 +7,30 @@
 
 import { useState, useCallback } from 'react';
 import { apiService } from '@/services/api';
-import type { Resume, ResumeAnalysis, CoverLetter, LearningPath, PracticeExam } from '@/types';
+import type { Resume, CoverLetter, LearningPath, PracticeExam } from '@/types';
+import type { ResumeAnalysisDetail } from '@/lib/api/resume-analysis';
 
 interface UseResumeState {
   resumes: Resume[];
-  currentAnalysis: ResumeAnalysis | null;
+  currentAnalysis: ResumeAnalysisDetail | null;
   isLoading: boolean;
   error: string | null;
 }
 
 interface UseResumeActions {
   uploadResume: (file: File, jobDescription?: string) => Promise<{ success: boolean; resumeId?: string; error?: string }>;
-  analyzeResume: (resumeId: string, jobDescription?: string) => Promise<{ success: boolean; analysis?: ResumeAnalysis; error?: string }>;
-  generateCoverLetter: (resumeId: string, request: { job_description: string; job_title?: string; company_name?: string }) => Promise<{ success: boolean; content?: string; error?: string }>;
+  analyzeResume: (resumeId: string, jobDescription?: string) => Promise<{ success: boolean; analysis?: ResumeAnalysisDetail; error?: string }>;
+  generateCoverLetter: (
+    resumeId: string,
+    request: { job_description: string }
+  ) => Promise<{ success: boolean; content?: string; error?: string }>;
   generateLearningPath: (resumeId: string, jobDescription?: string) => Promise<{ success: boolean; learningPath?: LearningPath; error?: string }>;
   generatePracticeExam: (resumeId: string, jobDescription?: string) => Promise<{ success: boolean; practiceExam?: PracticeExam; error?: string }>;
   loadResumeHistory: () => Promise<{ success: boolean; error?: string }>;
   deleteResume: (resumeId: string) => Promise<{ success: boolean; error?: string }>;
   downloadResume: (resumeId: string) => Promise<{ success: boolean; error?: string }>;
   clearError: () => void;
-  setCurrentAnalysis: (analysis: ResumeAnalysis | null) => void;
+  setCurrentAnalysis: (analysis: ResumeAnalysisDetail | null) => void;
 }
 
 export function useResume(): UseResumeState & UseResumeActions {
@@ -49,7 +53,7 @@ export function useResume(): UseResumeState & UseResumeActions {
     setError(null);
   }, [setError]);
 
-  const setCurrentAnalysis = useCallback((analysis: ResumeAnalysis | null) => {
+  const setCurrentAnalysis = useCallback((analysis: ResumeAnalysisDetail | null) => {
     setState(prev => ({ ...prev, currentAnalysis: analysis }));
   }, []);
 
@@ -112,8 +116,8 @@ export function useResume(): UseResumeState & UseResumeActions {
   }, []);
 
   const generateCoverLetter = useCallback(async (
-    resumeId: string, 
-    request: { job_description: string; job_title?: string; company_name?: string }
+    resumeId: string,
+    request: { job_description: string }
   ) => {
     setLoading(true);
     setError(null);
@@ -123,9 +127,16 @@ export function useResume(): UseResumeState & UseResumeActions {
       
       if (response.success && response.data) {
         setLoading(false);
-        return { 
-          success: true, 
-          content: response.data.content 
+        const data = response.data as { cover_letter?: string; content?: string };
+        const text = (data.cover_letter ?? data.content ?? '').trim();
+        if (!text) {
+          setError('Cover letter generation produced no text.');
+          setLoading(false);
+          return { success: false, error: 'Cover letter generation produced no text.' };
+        }
+        return {
+          success: true,
+          content: text,
         };
       } else {
         const error = response.error || 'Cover letter generation failed';
@@ -200,21 +211,14 @@ export function useResume(): UseResumeState & UseResumeActions {
     setError(null);
 
     try {
-      const response = await apiService.getResumeHistory();
-      
-      if (response.success && response.data) {
-        setState(prev => ({
-          ...prev,
-          resumes: response.data!,
-          isLoading: false,
-        }));
-        return { success: true };
-      } else {
-        const error = response.error || 'Failed to load resume history';
-        setError(error);
-        setLoading(false);
-        return { success: false, error };
-      }
+      const page = await apiService.getResumeHistoryPage(1, 200);
+
+      setState(prev => ({
+        ...prev,
+        resumes: page.resumes as Resume[],
+        isLoading: false,
+      }));
+      return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to load resume history';
       setError(errorMessage);

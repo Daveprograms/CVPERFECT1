@@ -13,8 +13,7 @@ from sqlalchemy.orm import Session
 from .celery_app import celery_app
 from ..database import SessionLocal
 from ..models.resume import Resume, ResumeAnalysis
-from ..services.gemini_service import GeminiService
-from ..core.config import settings
+from ..services.gemini_service import get_gemini_service
 
 logger = logging.getLogger(__name__)
 
@@ -42,20 +41,23 @@ def analyze_resume_async(self, db: Session, resume_id: str, job_description: str
         if not resume:
             raise ValueError(f"Resume {resume_id} not found")
         
-        # Initialize Gemini service with existing configuration
-        gemini_service = GeminiService(api_key=settings.GEMINI_API_KEY)
-        
-        # Analyze resume using existing Gemini setup (not Pro)
+        gemini = get_gemini_service()
         analysis_result = asyncio.run(
-            gemini_service.analyze_resume_content(resume.content, job_description)
+            gemini.analyze_resume_content(resume.content, job_description)
         )
         
         # Save analysis to database
+        overall = analysis_result.get("overall_score")
+        if overall is None:
+            overall = analysis_result.get("score")
+        ats = analysis_result.get("ats_score")
+        if overall is None or ats is None:
+            raise ValueError("Async analysis: missing score or ats_score in Gemini result")
         analysis = ResumeAnalysis(
             resume_id=resume_id,
             analysis_data=analysis_result,
-            overall_score=analysis_result.get('overall_score', 0),
-            ats_score=analysis_result.get('ats_score', 0),
+            overall_score=float(overall),
+            ats_score=float(ats),
             strengths=analysis_result.get('strengths', []),
             recommendations=analysis_result.get('recommendations', [])
         )
@@ -72,8 +74,9 @@ def analyze_resume_async(self, db: Session, resume_id: str, job_description: str
         }
         
     except Exception as e:
-        logger.error(f"Resume analysis failed for {resume_id}: {str(e)}")
-        self.retry(countdown=60, max_retries=3)
+        logger.error("Resume analysis failed for %s: %s", resume_id, e)
+        # Do not retry Gemini calls — avoids 429 / quota amplification.
+        raise
 
 
 @celery_app.task(bind=True, base=DatabaseTask)
@@ -89,16 +92,18 @@ def generate_cover_letter_async(self, db: Session, resume_id: str, job_descripti
         if not resume:
             raise ValueError(f"Resume {resume_id} not found")
         
-        # Initialize Gemini service
-        gemini_service = GeminiService(api_key=settings.GEMINI_API_KEY)
-        
-        # Generate cover letter using existing Gemini setup
+        resume_text = (resume.content or "").strip()
+        if len(resume_text) < 40:
+            raise ValueError(
+                "Resume has too little text for cover letter generation. "
+                "Re-upload or add content in the editor."
+            )
+
+        gemini = get_gemini_service()
         cover_letter_content = asyncio.run(
-            gemini_service.generate_cover_letter(
-                resume_content=resume.content,
+            gemini.generate_cover_letter(
+                resume_content=resume_text,
                 job_description=job_description,
-                job_title=job_title,
-                company_name=company_name
             )
         )
         
@@ -112,8 +117,8 @@ def generate_cover_letter_async(self, db: Session, resume_id: str, job_descripti
         }
         
     except Exception as e:
-        logger.error(f"Cover letter generation failed for {resume_id}: {str(e)}")
-        self.retry(countdown=60, max_retries=3)
+        logger.error("Cover letter generation failed for %s: %s", resume_id, e)
+        raise
 
 
 @celery_app.task(bind=True, base=DatabaseTask)
@@ -129,12 +134,9 @@ def generate_learning_path_async(self, db: Session, resume_id: str, job_descript
         if not resume:
             raise ValueError(f"Resume {resume_id} not found")
         
-        # Initialize Gemini service
-        gemini_service = GeminiService(api_key=settings.GEMINI_API_KEY)
-        
-        # Generate learning path using existing Gemini setup
+        gemini = get_gemini_service()
         learning_path = asyncio.run(
-            gemini_service.generate_learning_path(
+            gemini.generate_learning_path(
                 resume_content=resume.content,
                 job_description=job_description
             )
@@ -148,8 +150,8 @@ def generate_learning_path_async(self, db: Session, resume_id: str, job_descript
         }
         
     except Exception as e:
-        logger.error(f"Learning path generation failed for {resume_id}: {str(e)}")
-        self.retry(countdown=60, max_retries=3)
+        logger.error("Learning path generation failed for %s: %s", resume_id, e)
+        raise
 
 
 @celery_app.task(bind=True, base=DatabaseTask)
@@ -165,12 +167,9 @@ def generate_practice_exam_async(self, db: Session, resume_id: str, job_descript
         if not resume:
             raise ValueError(f"Resume {resume_id} not found")
         
-        # Initialize Gemini service
-        gemini_service = GeminiService(api_key=settings.GEMINI_API_KEY)
-        
-        # Generate practice exam using existing Gemini setup
+        gemini = get_gemini_service()
         practice_exam = asyncio.run(
-            gemini_service.generate_practice_exam(
+            gemini.generate_practice_exam(
                 resume_content=resume.content,
                 job_description=job_description,
                 num_questions=num_questions
@@ -186,8 +185,8 @@ def generate_practice_exam_async(self, db: Session, resume_id: str, job_descript
         }
         
     except Exception as e:
-        logger.error(f"Practice exam generation failed for {resume_id}: {str(e)}")
-        self.retry(countdown=60, max_retries=3)
+        logger.error("Practice exam generation failed for %s: %s", resume_id, e)
+        raise
 
 
 @celery_app.task(bind=True)

@@ -4,7 +4,6 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
-import { useAuth } from '@/hooks/useAuth'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -13,7 +12,6 @@ interface Message {
 }
 
 export default function AIChat() {
-  const { user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -46,11 +44,7 @@ export default function AIChat() {
       const response = await axios.post(
         '/api/chat',
         { message: input },
-        {
-          headers: {
-            Authorization: `Bearer ${(user as any)?.uid || 'placeholder'}`
-          }
-        }
+        { withCredentials: true }
       )
 
       const assistantMessage: Message = {

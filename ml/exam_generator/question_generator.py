@@ -9,6 +9,8 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass
 import google.generativeai as genai
 
+_GEMINI_MODEL = "gemini-2.5-flash"
+
 
 @dataclass
 class ExamQuestion:
@@ -28,8 +30,9 @@ class QuestionGenerator:
     def __init__(self, gemini_api_key: str):
         self.gemini_api_key = gemini_api_key
         genai.configure(api_key=gemini_api_key)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
         self.logger = logging.getLogger(__name__)
+        self.logger.info("[gemini] QuestionGenerator init model=%r", _GEMINI_MODEL)
+        self.model = genai.GenerativeModel(_GEMINI_MODEL)
     
     async def generate_exam(
         self,
@@ -119,6 +122,10 @@ class QuestionGenerator:
         """
         
         try:
+            self.logger.info(
+                "[gemini] generate_content call context=exam_skill_gap_analysis model=%r",
+                _GEMINI_MODEL,
+            )
             response = self.model.generate_content(analysis_prompt)
             analysis_text = response.text.strip()
             
@@ -213,6 +220,10 @@ class QuestionGenerator:
         """
         
         try:
+            self.logger.info(
+                "[gemini] generate_content call context=exam_single_question model=%r",
+                _GEMINI_MODEL,
+            )
             response = self.model.generate_content(question_prompt)
             response_text = response.text.strip()
             

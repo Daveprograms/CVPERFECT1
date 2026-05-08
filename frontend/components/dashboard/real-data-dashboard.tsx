@@ -3,10 +3,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { 
-  apiService,
-  mockServices
-} from '@/services/api';
+import { apiService } from '@/services/api';
 import { formatDate, formatScore, getScoreColor } from '@/utils/formatters';
 import { 
   Brain, 
@@ -43,42 +40,8 @@ import {
   X
 } from 'lucide-react';
 
-// Demo data for comprehensive testing
+// Demo / placeholder data for non-resume dashboard sections (still loaded via separate queries below).
 const demoData = {
-  resumeHistory: {
-    feedback_history: [
-      {
-        id: 'res_001',
-        resume_filename: 'Senior_Developer_Resume.pdf',
-        score: 85,
-        ats_score: 92,
-        analysis_count: 3,
-        character_count: 2450,
-        created_at: '2024-01-15T10:30:00Z',
-        updated_at: '2024-01-20T14:45:00Z'
-      },
-      {
-        id: 'res_002',
-        resume_filename: 'Frontend_Developer_Resume.pdf',
-        score: 78,
-        ats_score: 88,
-        analysis_count: 2,
-        character_count: 2100,
-        created_at: '2024-01-10T09:15:00Z',
-        updated_at: '2024-01-18T11:20:00Z'
-      },
-      {
-        id: 'res_003',
-        resume_filename: 'Full_Stack_Resume.pdf',
-        score: 91,
-        ats_score: 95,
-        analysis_count: 4,
-        character_count: 2800,
-        created_at: '2024-01-05T16:20:00Z',
-        updated_at: '2024-01-22T13:30:00Z'
-      }
-    ]
-  },
   seoData: {
     seo_check: {
       ats_percentage: 92,
@@ -265,61 +228,110 @@ export const RealDataDashboard: React.FC = () => {
   // Resume Services
   const { data: resumeHistory, isLoading: resumeLoading } = useQuery({
     queryKey: ['resume-history'],
-    queryFn: () => apiService.getResumeHistory(),
-    initialData: demoData.resumeHistory
+    queryFn: async () => {
+      const page = await apiService.getResumeHistoryPage(1, 20)
+      return {
+        feedback_history: page.resumes.map((r) => {
+          const rawScore = r.score ?? r.latest_score
+          const scoreNum =
+            rawScore == null || rawScore === ''
+              ? null
+              : Number(rawScore)
+          const score = Number.isFinite(scoreNum as number) ? scoreNum : null
+          const rawAts = r.ats_score
+          const atsNum =
+            rawAts == null || rawAts === '' ? null : Number(rawAts)
+          const ats_score = Number.isFinite(atsNum as number) ? atsNum : null
+          return {
+          id: String(r.id ?? ''),
+          resume_filename: String(r.filename ?? 'Resume'),
+          score,
+          ats_score,
+          analysis_count: Number(r.analysis_count ?? 0),
+          character_count: Number(
+            (r as { character_count?: unknown }).character_count ?? 0
+          ),
+          created_at: String(r.created_at ?? r.upload_date ?? ''),
+          updated_at: String(r.updated_at ?? r.upload_date ?? ''),
+          has_feedback: Boolean(r.has_feedback),
+        }
+        }),
+      }
+    },
   });
 
   // SEO Services
   const { data: seoData, isLoading: seoLoading } = useQuery({
     queryKey: ['seo-check'],
-    queryFn: () => mockServices.getSEOCheck('res_001'),
+    queryFn: () => Promise.resolve(demoData.seoData),
     initialData: demoData.seoData
   });
 
-  // Learning Path Services
   const { data: learningPath, isLoading: learningLoading } = useQuery({
     queryKey: ['learning-path'],
-    queryFn: () => mockServices.getLearningPath(),
+    queryFn: () => Promise.resolve(demoData.learningPath),
     initialData: demoData.learningPath
   });
 
-  // Applications Services
   const { data: applications, isLoading: applicationsLoading } = useQuery({
     queryKey: ['applications'],
-    queryFn: () => mockServices.getApplications(),
+    queryFn: () => Promise.resolve(demoData.applications),
     initialData: demoData.applications
   });
 
-  // Auto Apply Services
   const { data: autoApplyStats, isLoading: autoApplyLoading } = useQuery({
     queryKey: ['auto-apply-stats'],
-    queryFn: () => mockServices.getAutoApplyStats(),
+    queryFn: () => Promise.resolve(demoData.autoApplyStats),
     initialData: demoData.autoApplyStats
   });
 
-  // Bulk Apply Services
   const { data: bulkApplyStats, isLoading: bulkApplyLoading } = useQuery({
     queryKey: ['bulk-apply-stats'],
-    queryFn: () => mockServices.getBulkApplyStats(),
+    queryFn: () => Promise.resolve(demoData.bulkApplyStats),
     initialData: demoData.bulkApplyStats
   });
 
-  // Watchlist Services
   const { data: watchlist, isLoading: watchlistLoading } = useQuery({
     queryKey: ['watchlist'],
-    queryFn: () => mockServices.getWatchlist(),
+    queryFn: () => Promise.resolve(demoData.watchlist),
     initialData: demoData.watchlist
   });
 
-  // Subscription Services
   const { data: subscription, isLoading: subscriptionLoading } = useQuery({
     queryKey: ['subscription'],
-    queryFn: () => mockServices.getSubscription(),
+    queryFn: () => Promise.resolve(demoData.subscription),
     initialData: demoData.subscription
   });
 
   const isLoading = resumeLoading || seoLoading || learningLoading || applicationsLoading || 
                    autoApplyLoading || bulkApplyLoading || watchlistLoading || subscriptionLoading;
+
+  const resumeItems = resumeHistory?.feedback_history ?? []
+  const finiteScores = resumeItems
+    .map((r) => r.score)
+    .filter((s): s is number => s != null && Number.isFinite(s))
+  const avgResumeScoreFromApi =
+    finiteScores.length > 0
+      ? Math.round(
+          finiteScores.reduce((a, b) => a + b, 0) / finiteScores.length
+        )
+      : null
+  const finiteAts = resumeItems
+    .map((r) => r.ats_score)
+    .filter((s): s is number => s != null && Number.isFinite(s))
+  const avgAtsFromResumes =
+    finiteAts.length > 0
+      ? Math.round(finiteAts.reduce((a, b) => a + b, 0) / finiteAts.length)
+      : null
+  const analyzedResumeCount = resumeItems.filter(
+    (r) =>
+      r.has_feedback === true ||
+      (r.score != null && Number.isFinite(r.score))
+  ).length
+  const analyzedSharePct =
+    resumeItems.length > 0
+      ? Math.round((analyzedResumeCount / resumeItems.length) * 100)
+      : 0
 
   if (isLoading) {
     return (
@@ -408,8 +420,12 @@ export const RealDataDashboard: React.FC = () => {
               </div>
               <div className="hidden md:block">
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-primary">85%</div>
-                  <div className="text-sm text-muted-foreground">Success Rate</div>
+                  <div className="text-2xl font-bold text-primary">
+                    {resumeItems.length > 0 ? `${analyzedSharePct}%` : '—'}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Resumes analyzed
+                  </div>
                 </div>
               </div>
             </div>
@@ -423,7 +439,7 @@ export const RealDataDashboard: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Resume Score</p>
                 <p className="text-2xl font-bold text-primary">
-                  {resumeHistory?.feedback_history?.[0]?.score || 0}%
+                  {avgResumeScoreFromApi != null ? `${avgResumeScoreFromApi}%` : '—'}
                 </p>
               </div>
               <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -437,7 +453,7 @@ export const RealDataDashboard: React.FC = () => {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">ATS Score</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {seoData?.seo_check?.ats_percentage || 0}%
+                  {avgAtsFromResumes != null ? `${avgAtsFromResumes}%` : '—'}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center">
@@ -495,8 +511,8 @@ export const RealDataDashboard: React.FC = () => {
               </div>
               
               <div className="space-y-4">
-                {resumeHistory?.feedback_history?.slice(0, 3).map((resume, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                {resumeHistory?.feedback_history?.slice(0, 3).map((resume) => (
+                  <div key={resume.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
                     <div className="flex items-center space-x-4">
                       <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                         <FileText className="w-5 h-5 text-primary" />
@@ -510,14 +526,23 @@ export const RealDataDashboard: React.FC = () => {
                     </div>
                     <div className="flex items-center space-x-4">
                       <div className="text-right">
-                        <p className="text-sm font-medium">{resume.score}% Score</p>
-                        <p className="text-xs text-muted-foreground">{resume.ats_score}% ATS</p>
+                        <p className="text-sm font-medium">
+                          {resume.score != null && Number.isFinite(resume.score)
+                            ? `${Math.round(resume.score)}% score`
+                            : 'Run analysis'}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {resume.ats_score != null &&
+                          Number.isFinite(resume.ats_score)
+                            ? `${Math.round(resume.ats_score)}% ATS`
+                            : '—'}
+                        </p>
                       </div>
                       <div className="flex space-x-2">
                         <button 
                           className="btn btn-outline btn-sm"
                           onClick={() => {
-                            window.location.href = `/resumes/download/${resume.id}`;
+                            window.location.href = `/ai-feedback/${resume.id}`;
                           }}
                         >
                           <Eye className="h-4 w-4" />

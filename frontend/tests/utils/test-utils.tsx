@@ -5,7 +5,7 @@
 
 import React, { ReactElement } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
-import { AuthProvider } from '@/hooks/useAuth';
+import { AuthProvider } from '@/components/AuthProvider';
 import type { User } from '@/types';
 
 // Mock Next.js router

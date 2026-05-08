@@ -17,6 +17,7 @@ depends_on = None
 
 def upgrade():
     bind = op.get_bind()
+    insp = sa.inspect(bind)
 
     # Create enums idempotently (migration may be re-run after partial failure)
     applicationstatus = postgresql.ENUM(
@@ -52,57 +53,59 @@ def upgrade():
     jobsource.create(bind, checkfirst=True)
 
     # Create job_applications table (UUIDs align with app.models.job_application)
-    op.create_table(
-        'job_applications',
-        sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('company_name', sa.String(), nullable=False),
-        sa.Column('job_title', sa.String(), nullable=False),
-        sa.Column('job_url', sa.String(), nullable=True),
-        sa.Column('location', sa.String(), nullable=True),
-        sa.Column('salary_range', sa.String(), nullable=True),
-        sa.Column('status', applicationstatus, nullable=False),
-        sa.Column('applied_date', sa.DateTime(), nullable=False),
-        sa.Column('match_score', sa.Float(), nullable=True),
-        sa.Column('notes', sa.Text(), nullable=True),
-        sa.Column('resume_id', postgresql.UUID(as_uuid=True), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), nullable=False),
-        sa.PrimaryKeyConstraint('id'),
-        sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
-        sa.ForeignKeyConstraint(['resume_id'], ['resumes.id'], ondelete='SET NULL')
-    )
-    
-    # Create indexes for job_applications
-    op.create_index('ix_job_applications_user_id', 'job_applications', ['user_id'])
-    op.create_index('ix_job_applications_status', 'job_applications', ['status'])
-    op.create_index('ix_job_applications_applied_date', 'job_applications', ['applied_date'])
+    if not insp.has_table("job_applications"):
+        op.create_table(
+            'job_applications',
+            sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
+            sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
+            sa.Column('company_name', sa.String(), nullable=False),
+            sa.Column('job_title', sa.String(), nullable=False),
+            sa.Column('job_url', sa.String(), nullable=True),
+            sa.Column('location', sa.String(), nullable=True),
+            sa.Column('salary_range', sa.String(), nullable=True),
+            sa.Column('status', applicationstatus, nullable=False),
+            sa.Column('applied_date', sa.DateTime(), nullable=False),
+            sa.Column('match_score', sa.Float(), nullable=True),
+            sa.Column('notes', sa.Text(), nullable=True),
+            sa.Column('resume_id', postgresql.UUID(as_uuid=True), nullable=True),
+            sa.Column('created_at', sa.DateTime(), nullable=False),
+            sa.Column('updated_at', sa.DateTime(), nullable=False),
+            sa.PrimaryKeyConstraint('id'),
+            sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+            sa.ForeignKeyConstraint(['resume_id'], ['resumes.id'], ondelete='SET NULL')
+        )
+
+    # Create indexes for job_applications (idempotent)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_job_applications_user_id ON job_applications (user_id)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_job_applications_status ON job_applications (status)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_job_applications_applied_date ON job_applications (applied_date)")
     
     # Create jobs table
-    op.create_table(
-        'jobs',
-        sa.Column('id', sa.String(), nullable=False),
-        sa.Column('title', sa.String(), nullable=False),
-        sa.Column('company', sa.String(), nullable=False),
-        sa.Column('description', sa.Text(), nullable=False),
-        sa.Column('location', sa.String(), nullable=True),
-        sa.Column('salary_range', sa.String(), nullable=True),
-        sa.Column('job_type', jobtype, nullable=True),
-        sa.Column('source', jobsource, nullable=False),
-        sa.Column('external_id', sa.String(), nullable=True),
-        sa.Column('job_url', sa.String(), nullable=True),
-        sa.Column('posted_date', sa.DateTime(), nullable=True),
-        sa.Column('expires_date', sa.DateTime(), nullable=True),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.Column('updated_at', sa.DateTime(), nullable=False),
-        sa.PrimaryKeyConstraint('id')
-    )
-    
-    # Create indexes for jobs
-    op.create_index('ix_jobs_company', 'jobs', ['company'])
-    op.create_index('ix_jobs_location', 'jobs', ['location'])
-    op.create_index('ix_jobs_posted_date', 'jobs', ['posted_date'])
-    op.create_index('ix_jobs_source', 'jobs', ['source'])
+    if not insp.has_table("jobs"):
+        op.create_table(
+            'jobs',
+            sa.Column('id', sa.String(), nullable=False),
+            sa.Column('title', sa.String(), nullable=False),
+            sa.Column('company', sa.String(), nullable=False),
+            sa.Column('description', sa.Text(), nullable=False),
+            sa.Column('location', sa.String(), nullable=True),
+            sa.Column('salary_range', sa.String(), nullable=True),
+            sa.Column('job_type', jobtype, nullable=True),
+            sa.Column('source', jobsource, nullable=False),
+            sa.Column('external_id', sa.String(), nullable=True),
+            sa.Column('job_url', sa.String(), nullable=True),
+            sa.Column('posted_date', sa.DateTime(), nullable=True),
+            sa.Column('expires_date', sa.DateTime(), nullable=True),
+            sa.Column('created_at', sa.DateTime(), nullable=False),
+            sa.Column('updated_at', sa.DateTime(), nullable=False),
+            sa.PrimaryKeyConstraint('id')
+        )
+
+    # Create indexes for jobs (idempotent)
+    op.execute("CREATE INDEX IF NOT EXISTS ix_jobs_company ON jobs (company)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_jobs_location ON jobs (location)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_jobs_posted_date ON jobs (posted_date)")
+    op.execute("CREATE INDEX IF NOT EXISTS ix_jobs_source ON jobs (source)")
 
 
 def downgrade():

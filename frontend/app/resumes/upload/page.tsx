@@ -1,135 +1,110 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { 
-  FileUp,
-  FileText,
-  CheckCircle,
-  AlertCircle,
-  Loader2,
-  ArrowRight,
-  Star,
-  Brain,
+import Link from 'next/link'
+import {
   Briefcase,
+  CheckCircle,
+  ChevronLeft,
+  FileText,
+  FileUp,
+  Loader2,
   Target,
-  ChevronLeft
 } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
-import Link from 'next/link'
 import { useAuth } from '@/hooks/useAuth'
-import { getAuthToken } from '@/lib/auth'
+import { apiService } from '@/services/api'
+import type { ResumeAnalysisDetail } from '@/lib/api/resume-analysis'
+import {
+  ResumeScoreBar,
+  ResumeStrengthsSection,
+  ResumeSuggestionsSection,
+  ResumeWeaknessesSection,
+} from '@/components/resume/resume-analysis-sections'
+import { ErrorStateCard, ResumePageSpinner } from '@/components/resume/resume-page-states'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
-interface ResumeAnalysis {
-  score: number;
-  strengths: {
-    title: string;
-    description: string;
-    relevance: string;
-  }[];
-  feedback: {
-    category: string;
-    emoji: string;
-    items: {
-      job_wants: string;
-      you_have: string;
-      fix: string;
-      example_line: string;
-      bonus: string;
-      severity: 'high' | 'medium' | 'low';
-    }[];
-  }[];
-  extracted_info: {
-    name: string;
-    contact: {
-      email: string;
-      phone: string;
-      location: string; 
-    };  
-    summary: string;
-    experience: {
-      title: string;
-      company: string;
-      duration: string;
-      achievements: string[];
-    }[];
-    education: {
-      degree: string;
-      institution: string;
-      year: string;
-      gpa?: string;
-    }[];
-    skills: {
-      category: string;
-      items: string[];
-    }[];
-  };
-  jobMatches: {
-    title: string;
-    company: string;
-    matchScore: number;
-    description: string;
-    requirements: string[];
-    missingSkills: string[];
-  }[];
-  originalResume: string;
-  fixedResume: string | null;
-  improvements: {
-    category: string;
-    before: string;
-    after: string;
-    explanation: string;
-  }[];
+type JobMatch = {
+  title: string
+  company: string
+  matchScore: number
+  description: string
+  requirements?: string[]
+  missingSkills?: string[]
 }
 
+type Phase =
+  | 'idle'
+  | 'uploading'
+  | 'done'
+  | 'upload_only'
+
 export default function UploadResumePage() {
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
+  const [phase, setPhase] = useState<Phase>('idle')
   const [isDragging, setIsDragging] = useState(false)
-  const [isUploading, setIsUploading] = useState(false)
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [isFixing, setIsFixing] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [analysisProgress, setAnalysisProgress] = useState(0)
-  const [uploadSuccess, setUploadSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [jobDescription, setJobDescription] = useState('')
-  const [analysis, setAnalysis] = useState<ResumeAnalysis | null>(null)
-  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [analysis, setAnalysis] = useState<ResumeAnalysisDetail | null>(null)
+  const [isFixing, setIsFixing] = useState(false)
+  const [lastResumeId, setLastResumeId] = useState<string | null>(null)
+  const uploadInFlightRef = useRef(false)
+  const analyzeInFlightRef = useRef(false)
+  const lastAnalyzeClickAtRef = useRef<number>(0)
 
-  const [subscriptionStatus, setSubscriptionStatus] = useState<{
-    subscription_type: string;
-    can_upload: boolean;
-    uploads_used?: number;
-    upload_limit?: number;
-    subscription_status?: string;
-    features?: any;
-  } | null>(null)
-
-  // TEMPORARILY DISABLED: Check subscription status on component mount
   useEffect(() => {
-    const checkSubscription = async () => {
-      try {
-        const response = await fetch('/api/user/subscription')
-        if (response.ok) {
-          const data = await response.json()
-          setSubscriptionStatus(data)
-          
-          // TEMPORARILY DISABLED: Allow all uploads
-          // if (!data.can_upload) {
-          //   setError('Resume upload requires a paid subscription. Please upgrade to upload resumes.')
-          // }
-        }
-      } catch (error) {
-        console.error('Failed to check subscription:', error)
-      }
+    if (!user) return
+    void apiService.getSubscriptionInfo().catch(() => null)
+  }, [user])
+
+  const validateAndUpload = async (file: File) => {
+    if (uploadInFlightRef.current) return
+    const validTypes = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ]
+    if (!validTypes.includes(file.type)) {
+      setError('Please upload a PDF or DOCX file.')
+      return
+    }
+    const maxSize = 5 * 1024 * 1024
+    if (file.size > maxSize) {
+      setError('File size must be under 5MB.')
+      return
     }
 
-    if (user) {
-      checkSubscription()
+    if (!user) {
+      setError('Please sign in to upload.')
+      return
     }
-  }, [user])
+
+    setError(null)
+    setAnalysis(null)
+    setPhase('uploading')
+    uploadInFlightRef.current = true
+
+    const uploadRes = await apiService.uploadResume(file, jobDescription || undefined)
+    if (!uploadRes.success || !uploadRes.data?.resume_id) {
+      setError(uploadRes.error || 'Upload failed')
+      setPhase('idle')
+      uploadInFlightRef.current = false
+      return
+    }
+
+    const resumeId = uploadRes.data.resume_id
+    setLastResumeId(resumeId)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('currentResumeId', resumeId)
+    }
+
+    // Important: do NOT auto-run analysis here. Upload should only store the file.
+    // Analysis is user-triggered (prevents accidental Gemini request storms).
+    setPhase('upload_only')
+    uploadInFlightRef.current = false
+  }
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
@@ -145,656 +120,362 @@ export default function UploadResumePage() {
     e.preventDefault()
     setIsDragging(false)
     const file = e.dataTransfer.files[0]
-    if (file) {
-      await handleResumeUpload(file)
-    }
+    if (file) await validateAndUpload(file)
   }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
-
-    // Validate file type
-    const validTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
-    if (!validTypes.includes(file.type)) {
-      setError('Please upload a PDF or DOCX file')
-      return
-    }
-
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024 // 5MB
-    if (file.size > maxSize) {
-      setError('File size should be less than 5MB')
-      return
-    }
-
-    setError(null)
-    await handleResumeUpload(file)
+    if (file) await validateAndUpload(file)
+    e.target.value = ''
   }
 
-  const handleResumeUpload = async (file: File) => {
-    if (!user) {
-      setError('Please sign in to upload a resume')
-      return
-    }
+  const handleAnalyzeNow = async (resumeId: string) => {
+    const now = Date.now()
+    if (analyzeInFlightRef.current) return
+    if (now - lastAnalyzeClickAtRef.current < 800) return
+    lastAnalyzeClickAtRef.current = now
+    analyzeInFlightRef.current = true
 
-    // FORCE CLEAR ANY SUBSCRIPTION-RELATED ERRORS
     setError(null)
-    
-    setIsUploading(true)
-    setUploadProgress(0)
-    setAnalysisProgress(0)
-    
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      if (jobDescription) {
-        formData.append('job_description', jobDescription)
+      const analyzeRes = await apiService.analyzeResume(
+        resumeId,
+        jobDescription || undefined
+      )
+      if (!analyzeRes.success || !analyzeRes.data) {
+        setError(analyzeRes.error || 'Analysis failed')
+        return
       }
-      
-
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval)
-            return prev
-          }
-          return prev + Math.random() * 20
-        })
-      }, 200)
-
-      // Upload resume
-      const uploadResponse = await fetch('/api/resume/upload', {
-        method: 'POST',
-        body: formData
-      })
-
-      clearInterval(progressInterval)
-      setUploadProgress(100)
-
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json()
-        // TEMPORARILY BYPASS SUBSCRIPTION ERRORS
-        if (errorData.detail && errorData.detail.includes('subscription')) {
-          console.log('⚠️ Bypassing subscription error for free testing')
-          // Don't throw subscription errors - continue as if successful
-        } else {
-          throw new Error(errorData.detail || 'Failed to upload resume')
-        }
-      }
-
-      const uploadData = await uploadResponse.json()
-      console.log('✅ Upload successful:', uploadData)
-      
-      // Store resume ID for later use (PDF download)
-      localStorage.setItem('currentResumeId', uploadData.id)
-      
-      // Small delay to show 100% progress
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      setIsUploading(false)
-      setUploadSuccess(true)
-      setIsAnalyzing(true)
-
-      // Simulate analysis progress
-      const analysisInterval = setInterval(() => {
-        setAnalysisProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(analysisInterval)
-            return prev
-          }
-          return prev + Math.random() * 15
-        })
-      }, 300)
-
-      // Get analysis using the resume ID from upload response
-      const analysisResponse = await fetch(`/api/resume/analyze/${uploadData.id}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          job_description: jobDescription
-        })
-      })
-
-      clearInterval(analysisInterval)
-      setAnalysisProgress(100)
-
-      if (!analysisResponse.ok) {
-        const errorData = await analysisResponse.json()
-        throw new Error(errorData.detail || 'Failed to analyze resume')
-      }
-
-      const analysisData = await analysisResponse.json()
-      console.log('✅ Analysis successful:', analysisData)
-      
-      // Small delay to show 100% analysis progress
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      // Update state with analysis data
-      setAnalysis({
-        ...analysisData,
-        jobMatches: analysisData.job_matches || [],
-        originalResume: uploadData.content,
-        fixedResume: null,
-        improvements: analysisData.improvements || []
-      })
-
-      setIsAnalyzing(false)
-    } catch (error) {
-      console.error('❌ Upload/Analysis failed:', error)
-      setError(error instanceof Error ? error.message : 'An error occurred')
-      setIsUploading(false)
-      setIsAnalyzing(false)
-      setUploadProgress(0)
-      setAnalysisProgress(0)
+      setAnalysis(analyzeRes.data)
+      setPhase('done')
+    } finally {
+      analyzeInFlightRef.current = false
     }
   }
 
   const handleFixResume = async () => {
     if (!analysis || !user) return
+    const resumeId =
+      lastResumeId ||
+      (typeof window !== 'undefined'
+        ? localStorage.getItem('currentResumeId')
+        : null)
+    if (!resumeId) {
+      setError('Missing resume id. Please upload again.')
+      return
+    }
 
     setIsFixing(true)
+    setError(null)
     try {
-      const token = getAuthToken()
-      if (!token) {
-        throw new Error('Authentication token not found')
-      }
-
-      const response = await fetch('/api/resume/fix', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          content: analysis.originalResume,
-          job_description: jobDescription,
-          feedback: analysis.feedback,
-          extracted_info: analysis.extracted_info
-        })
+      const res = await apiService.fixResume({
+        resume_id: resumeId,
+        job_description: jobDescription || undefined,
       })
-
-      if (!response.ok) {
-        throw new Error('Failed to fix resume')
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to fix resume')
       }
-
-      const data = await response.json()
-      setAnalysis(prev => prev ? {
-        ...prev,
-        fixedResume: data.fixedContent,
-        improvements: data.improvements
-      } : null)
-
-      // Redirect to resumes page after successful fix
-      window.location.href = '/resumes'
-    } catch (error) {
-      console.error('Error fixing resume:', error)
+      router.push('/resumes')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Fix failed')
     } finally {
       setIsFixing(false)
     }
   }
 
-  const renderFeedbackCategory = (category: string) => {
-    if (!analysis) return null
-    const categoryFeedback = analysis.feedback.find(f => f.category === category)
-    if (!categoryFeedback) return null
+  const jobMatches: JobMatch[] = (() => {
+    const raw = analysis?.job_matches
+    if (!Array.isArray(raw)) return []
+    return raw.map((j: unknown) => {
+      const o =
+        j && typeof j === 'object' ? (j as Record<string, unknown>) : {}
+      return {
+        title: String(o.title ?? ''),
+        company: String(o.company ?? ''),
+        matchScore: Number(o.matchScore ?? o.match_score ?? 0),
+        description: String(o.description ?? ''),
+        requirements: Array.isArray(o.requirements)
+          ? (o.requirements as string[])
+          : undefined,
+        missingSkills: Array.isArray(o.missingSkills)
+          ? (o.missingSkills as string[])
+          : Array.isArray(o.missing_skills)
+            ? (o.missing_skills as string[])
+            : undefined,
+      }
+    })
+  })()
 
+  const score =
+    typeof analysis?.score === 'number' && !Number.isNaN(analysis.score)
+      ? analysis.score
+      : null
+
+  const strengths = Array.isArray(analysis?.strengths)
+    ? analysis!.strengths!
+    : []
+  const feedback = Array.isArray(analysis?.feedback) ? analysis!.feedback! : []
+  const improvements = Array.isArray(analysis?.improvements)
+    ? analysis!.improvements!
+    : []
+
+  if (authLoading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-        <div className="flex items-center space-x-2 mb-4">
-          <span className="text-xl">{categoryFeedback.emoji || '🔧'}</span>
-          <h3 className="text-lg font-semibold">{category}</h3>
-          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-            ATS-Focused
-          </span>
-        </div>
-        <ul className="space-y-4">
-          {categoryFeedback.items.map((item, index) => (
-            <li key={index} className="border-l-4 border-primary pl-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">🎯 Job Wants:</p>
-                    <p className="text-gray-900 dark:text-gray-100">{item.job_wants}</p>
-                  </div>
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-orange-600 dark:text-orange-400 mb-1">📝 You Have:</p>
-                    <p className="text-gray-700 dark:text-gray-300">{item.you_have}</p>
-                  </div>
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-green-600 dark:text-green-400 mb-1">✅ Fix:</p>
-                    <p className="text-gray-700 dark:text-gray-300">{item.fix}</p>
-                  </div>
-                  {item.example_line && (
-                    <div className="mb-3 bg-gray-50 dark:bg-gray-700 p-3 rounded">
-                      <p className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-1">💡 Example Line:</p>
-                      <p className="text-sm italic text-gray-700 dark:text-gray-300">"{item.example_line}"</p>
-                    </div>
-                  )}
-                  {item.bonus && (
-                    <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded">
-                      <p className="text-sm font-medium text-green-600 dark:text-green-400 mb-1">🌟 Bonus:</p>
-                      <p className="text-sm text-green-700 dark:text-green-300">{item.bonus}</p>
-                    </div>
-                  )}
-                </div>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  item.severity === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
-                  item.severity === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                  'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                }`}>
-                  {item.severity} impact
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <DashboardLayout>
+        <ResumePageSpinner label="Loading…" />
+      </DashboardLayout>
     )
   }
 
   return (
     <DashboardLayout>
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Header Section */}
-        <div className="flex justify-between items-center">
+      <div className="mx-auto max-w-4xl space-y-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold mb-2">Upload Resume</h1>
-            <p className="text-gray-600 dark:text-gray-300">
-              Upload your resume and get instant, professional feedback powered by AI
+            <h1 className="text-2xl font-bold tracking-tight">Upload resume</h1>
+            <p className="mt-1 text-muted-foreground">
+              Add a file, optionally paste a job description, and get structured
+              feedback.
             </p>
           </div>
-          <Link
-            href="/resumes"
-            className="flex items-center space-x-2 text-primary hover:text-primary/80 transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            <span>Back to Resumes</span>
-          </Link>
-        </div>
-        
-        {/* Features Preview */}
-        <div className="flex justify-center items-center space-x-8 text-sm text-gray-500 dark:text-gray-400">
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            <span>Instant Scoring</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-            <span>Detailed Feedback</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-            <span>Job Matching</span>
-          </div>
+          <Button variant="ghost" className="gap-2 self-start" asChild>
+            <Link href="/resumes">
+              <ChevronLeft className="h-4 w-4" />
+              Back to library
+            </Link>
+          </Button>
         </div>
 
-        {/* Job Description Input */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Target Job Description (Optional)</h2>
-          <textarea
-            value={jobDescription}
-            onChange={(e) => setJobDescription(e.target.value)}
-            placeholder="Paste the job description here to get targeted feedback and matching jobs..."
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-h-[150px]"
-          />
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Target job (optional)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <textarea
+              value={jobDescription}
+              onChange={(e) => setJobDescription(e.target.value)}
+              placeholder="Paste a job description for tighter matching and feedback…"
+              className="min-h-[140px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              disabled={phase === 'uploading'}
+            />
+          </CardContent>
+        </Card>
 
-        {/* Error Message */}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-            <div className="flex items-center space-x-2 text-red-600 dark:text-red-400">
-              <AlertCircle className="w-5 h-5" />
-              <span>{error}</span>
-            </div>
-          </div>
-        )}
+        {error ? (
+          <ErrorStateCard title="Could not complete request" message={error} />
+        ) : null}
 
-        {/* Upload Area */}
         <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-            isDragging ? 'border-primary bg-primary/5' : 'border-gray-300 dark:border-gray-700'
-          } ${error ? 'border-red-300 dark:border-red-700' : ''}`}
+          className={`rounded-xl border-2 border-dashed p-10 text-center transition-colors ${
+            isDragging
+              ? 'border-primary bg-primary/5'
+              : 'border-muted-foreground/25'
+          }`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          onDrop={(e) => void handleDrop(e)}
         >
-          <FileUp className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-          <p className="text-lg font-medium mb-2">Drag and drop your resume here</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            Supports PDF and DOCX files (max 5MB)
+          <FileUp className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+          <p className="mb-1 text-lg font-medium">Drop your resume here</p>
+          <p className="mb-4 text-sm text-muted-foreground">
+            PDF or DOCX, max 5MB
           </p>
           <input
             type="file"
             id="resumeUpload"
             className="hidden"
             accept=".pdf,.docx"
-            onChange={handleFileSelect}
+            onChange={(e) => void handleFileSelect(e)}
+            disabled={phase === 'uploading'}
           />
-          <label
-            htmlFor="resumeUpload"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
+          <Button
+            type="button"
+            disabled={phase === 'uploading'}
+            onClick={() =>
+              document.getElementById('resumeUpload')?.click()
+            }
           >
-            Or click to browse files
-          </label>
+            Browse files
+          </Button>
         </div>
 
-        {/* Analysis Results */}
-        {uploadSuccess && analysis && (
-          <div className="space-y-6">
-            {/* Success Message */}
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-              <div className="flex items-center space-x-2 text-green-600 dark:text-green-400">
-                <CheckCircle className="w-5 h-5" />
-                <span>Resume uploaded and analyzed successfully!</span>
+        {phase === 'uploading' ? (
+          <Card>
+            <CardContent className="flex flex-col items-center gap-4 py-12">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="font-medium">Uploading…</p>
+              <p className="text-center text-sm text-muted-foreground">
+                Securely transferring and parsing your document.
+              </p>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {phase === 'upload_only' && lastResumeId ? (
+          <Card className="border-green-500/30 bg-green-500/5">
+            <CardContent className="flex flex-col gap-4 py-8 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="mt-0.5 h-6 w-6 shrink-0 text-green-600" />
+                <div>
+                  <p className="font-semibold text-green-900 dark:text-green-100">
+                    Upload complete
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Analysis was skipped or did not finish. Open the resume to
+                    review or run analysis when you are ready.
+                  </p>
+                </div>
               </div>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild>
+                  <Link href={`/ai-feedback/${lastResumeId}`}>View resume</Link>
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void handleAnalyzeNow(lastResumeId)}
+                >
+                  Analyze now
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/resumes">Go to library</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {phase === 'done' && analysis ? (
+          <div className="space-y-6">
+            <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/5 px-4 py-3 text-sm text-green-800 dark:text-green-200">
+              <CheckCircle className="h-5 w-5 shrink-0" />
+              Resume uploaded and analyzed.
             </div>
 
-            {/* Score and Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-semibold">Resume Score</h2>
-                  <div className="flex items-center space-x-1 bg-primary/10 text-primary px-3 py-1 rounded-full">
-                    <Star className="w-4 h-4" />
-                    <span className="font-bold text-lg">{analysis.score}/100</span>
-                  </div>
-                </div>
-                <div className="relative">
-                  <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <motion.div
-                      className={`h-4 rounded-full ${
-                        analysis.score >= 80 ? 'bg-green-500' :
-                        analysis.score >= 60 ? 'bg-yellow-500' :
-                        'bg-red-500'
-                      }`}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${analysis.score}%` }}
-                      transition={{ duration: 1.5, ease: "easeOut" }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>0</span>
-                    <span className={`font-medium ${
-                      analysis.score >= 80 ? 'text-green-600' :
-                      analysis.score >= 60 ? 'text-yellow-600' :
-                      'text-red-600'
-                    }`}>
-                      {analysis.score >= 80 ? 'Excellent' :
-                       analysis.score >= 60 ? 'Good' :
-                       'Needs Improvement'}
-                    </span>
-                    <span>100</span>
-                  </div>
-                </div>
-              </div>
+            {score != null ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <ResumeScoreBar score={score} />
+                </CardContent>
+              </Card>
+            ) : null}
 
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-                <h2 className="text-xl font-semibold mb-4">Key Information</h2>
-                <div className="space-y-3">
+            {analysis.extracted_info &&
+            typeof analysis.extracted_info === 'object' ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <FileText className="h-4 w-4" />
+                    Extracted snapshot
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-3 text-sm sm:grid-cols-2">
                   <div>
-                    <p className="text-sm text-gray-500">Name</p>
-                    <p className="font-medium">{analysis.extracted_info.name}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Experience</p>
-                    <p className="font-medium">{analysis.extracted_info.experience.length} positions</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Skills</p>
+                    <p className="text-muted-foreground">Name</p>
                     <p className="font-medium">
-                      {analysis.extracted_info.skills.reduce((acc, curr) => acc + curr.items.length, 0)} skills
+                      {String(
+                        (analysis.extracted_info as { name?: string }).name ??
+                          '—'
+                      )}
                     </p>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Strengths Section */}
-            {analysis.strengths && analysis.strengths.length > 0 && (
-              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6">
-                <div className="flex items-center space-x-2 mb-4">
-                  <div className="text-green-600 dark:text-green-400">✅</div>
-                  <h2 className="text-xl font-semibold text-green-800 dark:text-green-200">Strengths You Already Have</h2>
-                </div>
-                <div className="space-y-3">
-                  {analysis.strengths.map((strength, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <div className="text-green-600 dark:text-green-400 mt-1">•</div>
-                      <div>
-                        <p className="font-medium text-green-800 dark:text-green-200">{strength.title}</p>
-                        <p className="text-sm text-green-700 dark:text-green-300 mt-1">{strength.description}</p>
-                        {strength.relevance && (
-                          <p className="text-xs text-green-600 dark:text-green-400 mt-1 italic">{strength.relevance}</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Feedback Categories */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-              <div className="mb-6">
-                <div className="flex items-center space-x-2 mb-3">
-                  <div className="text-orange-600 dark:text-orange-400">🔧</div>
-                  <h2 className="text-xl font-semibold">Areas to Improve (Actionable)</h2>
-                </div>
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                  <div className="flex items-start space-x-2">
-                    <div className="text-blue-600 dark:text-blue-400 mt-0.5">🎯</div>
-                    <div className="text-sm text-blue-800 dark:text-blue-300">
-                      <p className="font-medium mb-1">Smart ATS Analysis</p>
-                      <p>This feedback focuses on <strong>substance over style</strong> - we analyze impact, keywords, action verbs, and content depth rather than formatting or contact details.</p>
-                    </div>
+                  <div>
+                    <p className="text-muted-foreground">Experience</p>
+                    <p className="font-medium">
+                      {Array.isArray(
+                        (analysis.extracted_info as { experience?: unknown[] })
+                          .experience
+                      )
+                        ? `${(analysis.extracted_info as { experience: unknown[] }).experience.length} roles`
+                        : '—'}
+                    </p>
                   </div>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
+            ) : null}
 
-              {/* Category Filter */}
-              <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
-                <button
-                  onClick={() => setSelectedCategory('all')}
-                  className={`px-4 py-2 rounded-full text-sm ${
-                    selectedCategory === 'all'
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  All Categories
-                </button>
-                {analysis.feedback.map((category) => (
-                  <button
-                    key={category.category}
-                    onClick={() => setSelectedCategory(category.category)}
-                    className={`px-4 py-2 rounded-full text-sm ${
-                      selectedCategory === category.category
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                    }`}
-                  >
-                    {category.category}
-                  </button>
-                ))}
-              </div>
+            <ResumeStrengthsSection strengths={strengths} />
+            <ResumeWeaknessesSection feedback={feedback} />
+            <ResumeSuggestionsSection improvements={improvements} />
 
-              {/* Feedback Content */}
-              <div className="space-y-6">
-                {selectedCategory === 'all'
-                  ? analysis.feedback.map((category) => renderFeedbackCategory(category.category))
-                  : renderFeedbackCategory(selectedCategory)}
-              </div>
-            </div>
-
-            {/* Job Matches */}
-            {analysis.jobMatches && analysis.jobMatches.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm">
-                <div className="flex items-center space-x-2 mb-4">
-                  <Briefcase className="w-5 h-5 text-primary" />
-                  <h2 className="text-xl font-semibold">Matching Jobs</h2>
-                </div>
-                <div className="space-y-4">
-                  {analysis.jobMatches.map((job, index) => (
-                    <div key={index} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
+            {jobMatches.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Briefcase className="h-5 w-5" />
+                    Matching jobs
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {jobMatches.map((job, index) => (
+                    <div key={index} className="rounded-lg border p-4">
+                      <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                         <div>
                           <h3 className="font-semibold">{job.title}</h3>
-                          <p className="text-gray-600 dark:text-gray-300">{job.company}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {job.company}
+                          </p>
                         </div>
-                        <div className="flex items-center space-x-1 bg-primary/10 text-primary px-2 py-1 rounded text-sm">
-                          <Target className="w-4 h-4" />
-                          <span>{job.matchScore}% Match</span>
-                        </div>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
+                          <Target className="h-3.5 w-3.5" />
+                          {job.matchScore}% match
+                        </span>
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+                      <p className="text-sm text-muted-foreground">
                         {job.description}
                       </p>
-                      {job.missingSkills?.length > 0 && (
-                        <div className="mt-2">
-                          <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Missing Skills:
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {job.missingSkills.map((skill, idx) => (
+                      {job.missingSkills && job.missingSkills.length > 0 ? (
+                        <div className="mt-3">
+                          <p className="mb-1 text-xs font-medium">Skill gaps</p>
+                          <div className="flex flex-wrap gap-1">
+                            {job.missingSkills.map((s, i) => (
                               <span
-                                key={idx}
-                                className="px-2 py-1 bg-red-100 text-red-800 rounded text-sm"
+                                key={i}
+                                className="rounded bg-destructive/10 px-2 py-0.5 text-xs text-destructive"
                               >
-                                {skill}
+                                {s}
                               </span>
                             ))}
                           </div>
                         </div>
-                      )}
-                      <button className="mt-3 text-primary hover:underline text-sm">
-                        View Details
-                      </button>
+                      ) : null}
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
+                </CardContent>
+              </Card>
+            ) : null}
 
-            {/* Actions */}
-            <div className="flex space-x-3">
-              <button
-                onClick={handleFixResume}
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button
+                type="button"
+                className="flex-1"
+                onClick={() => void handleFixResume()}
                 disabled={isFixing}
-                className="flex-1 bg-primary text-white px-4 py-2 rounded-lg text-center disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isFixing ? (
-                  <div className="flex items-center justify-center">
-                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                    Fixing Resume...
-                  </div>
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Fixing…
+                  </>
                 ) : (
-                  'Fix Resume'
+                  'Fix resume'
                 )}
-              </button>
-              <button
-                onClick={() => {
-                  // Store analysis data in localStorage for the feedback page
-                  const resumeId = localStorage.getItem('currentResumeId')
-                  localStorage.setItem('resumeAnalysis', JSON.stringify({
-                    analysis,
-                    jobDescription,
-                    uploadedAt: new Date().toISOString(),
-                    resumeId: resumeId
-                  }))
-                  router.push('/feedback')
-                }}
-                className="flex-1 bg-secondary text-primary px-4 py-2 rounded-lg text-center"
-              >
-                View Full Analysis
-              </button>
+              </Button>
+              <Button variant="secondary" className="flex-1" asChild>
+                <Link
+                  href={
+                    lastResumeId
+                      ? `/ai-feedback/${lastResumeId}`
+                      : '/resumes'
+                  }
+                >
+                  Open full analysis page
+                </Link>
+              </Button>
             </div>
           </div>
-        )}
-
-        {/* Progress States */}
-        {isUploading && (
-          <motion.div 
-            className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
-                <FileUp className="w-8 h-8 text-primary" />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">Uploading Resume</h2>
-              <p className="text-gray-600 dark:text-gray-300">
-                Processing your file and extracting content...
-              </p>
-            </div>
-            
-            <div className="max-w-md mx-auto">
-              <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                <span>Progress</span>
-                <span>{Math.round(uploadProgress)}%</span>
-              </div>
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-3 bg-primary rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${uploadProgress}%` }}
-                  transition={{ duration: 0.3 }}
-                />
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {isAnalyzing && (
-          <motion.div 
-            className="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 mx-auto mb-4 bg-primary/10 rounded-full flex items-center justify-center">
-                <Brain className="w-8 h-8 text-primary animate-pulse" />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">Analyzing Your Resume</h2>
-              <p className="text-gray-600 dark:text-gray-300">
-                AI is evaluating your resume and finding job matches...
-              </p>
-            </div>
-            
-            <div className="max-w-md mx-auto">
-              <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
-                <span>Analysis Progress</span>
-                <span>{Math.round(analysisProgress)}%</span>
-              </div>
-              <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                <motion.div
-                  className="h-3 bg-gradient-to-r from-primary to-purple-500 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${analysisProgress}%` }}
-                  transition={{ duration: 0.3 }}
-                />
-              </div>
-              
-              <div className="mt-4 text-center">
-                <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                  </div>
-                  <span>Processing with AI...</span>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
+        ) : null}
       </div>
     </DashboardLayout>
   )
-} 
+}

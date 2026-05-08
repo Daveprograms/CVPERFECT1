@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function GET() {
   try {
@@ -15,8 +16,7 @@ export async function GET() {
 
     // Check backend health
     try {
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8000'
-      const response = await fetch(`${backendUrl}/health`, {
+      const response = await fetchBackend('/health', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

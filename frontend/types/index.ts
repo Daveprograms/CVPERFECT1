@@ -7,7 +7,6 @@ export interface User {
   subscription_status: string;
   created_at: string;
   updated_at: string;
-  firebase_uid?: string;
   stripe_customer_id?: string;
 }
 

@@ -88,7 +88,9 @@ uvicorn app.main:app --reload
    # Should return standardized error format
    ```
 
-### To Run Tests (when Firebase is configured):
+### To Run Tests
+
+PostgreSQL must be available (see `TEST_DATABASE_URL` / `tests/conftest.py`).
 
 ```bash
 cd backend
@@ -109,8 +111,7 @@ pytest -v
 
 ## Known Limitations
 
-- Tests require Firebase credentials to run full integration tests
-- For unit tests only (no Firebase), use standalone test files
+- DB-backed tests require a PostgreSQL test database
 - Redis is optional - caching will be disabled if Redis is not available
 
 ## Configuration
@@ -118,7 +119,7 @@ pytest -v
 Create `.env` file with:
 ```bash
 DATABASE_URL=postgresql://user:pass@localhost/cvperfect
-FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json
+JWT_SECRET=your-long-random-secret
 GEMINI_API_KEY=your_key
 STRIPE_SECRET_KEY=your_key
 REDIS_ENABLED=false  # Set to true if you have Redis

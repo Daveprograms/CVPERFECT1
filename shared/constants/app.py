@@ -29,8 +29,10 @@ PRO_LIMITS = {
 
 # AI Models
 class AIModels:
-    GEMINI = "gemini-1.5-flash"
-GEMINI_VISION = "gemini-1.5-flash-exp"
+    GEMINI = "gemini-2.5-flash"
+
+
+GEMINI_VISION = "gemini-2.5-flash"
 
 # File Types
 ALLOWED_FILE_TYPES = {'.pdf', '.doc', '.docx', '.txt'}

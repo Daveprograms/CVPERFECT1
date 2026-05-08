@@ -5,11 +5,14 @@ Ensures production always uses real data
 """
 
 import logging
+from pathlib import Path
+from collections import defaultdict
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from ..core.config import settings
 from ..models.user import User
 from ..models.resume import Resume, ResumeAnalysis
+from ..models.analytics import Analytics, ActionType
 from ..utils.file_processing import extract_text_from_file
 
 logger = logging.getLogger(__name__)
@@ -42,9 +45,12 @@ class RealDataService:
             # Production: Extract real text from uploaded file
             try:
                 extracted_text = extract_text_from_file(file_path)
-                
+
                 if not extracted_text.strip():
-                    raise ValueError("No text content found in uploaded file")
+                    raise ValueError(
+                        "No readable text found in this file. "
+                        "Try a text-based PDF or DOCX (scanned/image-only PDFs are not supported)."
+                    )
                 
                 # Save to database with real extracted content
                 resume = Resume(
@@ -135,28 +141,79 @@ class RealDataService:
                 resumes = self.db.query(Resume).filter(
                     Resume.user_id == user_id
                 ).order_by(Resume.upload_date.desc()).all()
-                
+
+                resume_ids = [r.id for r in resumes]
+                action_by_resume: Dict[str, set] = defaultdict(set)
+                if resume_ids:
+                    rows = (
+                        self.db.query(Analytics.resume_id, Analytics.action_type)
+                        .filter(Analytics.resume_id.in_(resume_ids))
+                        .all()
+                    )
+                    for rid, at in rows:
+                        if rid is not None:
+                            action_by_resume[str(rid)].add(at)
+
                 resume_data = []
                 for resume in resumes:
-                    # Get latest analysis if available
                     latest_analysis = self.db.query(ResumeAnalysis).filter(
                         ResumeAnalysis.resume_id == resume.id
                     ).order_by(ResumeAnalysis.created_at.desc()).first()
-                    
+
+                    analysis_count = self.db.query(ResumeAnalysis).filter(
+                        ResumeAnalysis.resume_id == resume.id
+                    ).count()
+
+                    rid = str(resume.id)
+                    flags = action_by_resume.get(rid, set())
+                    upload_iso = resume.upload_date.isoformat() if resume.upload_date else ""
+                    updated_iso = (
+                        latest_analysis.created_at.isoformat()
+                        if latest_analysis and latest_analysis.created_at
+                        else upload_iso
+                    )
+                    score_val = (
+                        int(round(latest_analysis.overall_score))
+                        if latest_analysis and latest_analysis.overall_score is not None
+                        else None
+                    )
+                    ats_val = (
+                        float(latest_analysis.ats_score)
+                        if latest_analysis and latest_analysis.ats_score is not None
+                        else None
+                    )
+
                     resume_dict = {
-                        "id": resume.id,
+                        "id": rid,
                         "filename": resume.filename,
-                        "upload_date": resume.upload_date.isoformat(),
+                        "company_name": Path(resume.filename).stem
+                        if resume.filename
+                        else "Resume",
+                        "upload_date": upload_iso,
                         "file_type": resume.file_type,
-                        "content_preview": resume.content[:200] + "..." if len(resume.content) > 200 else resume.content,
+                        "content_preview": resume.content[:200] + "..."
+                        if len(resume.content) > 200
+                        else resume.content,
                         "character_count": len(resume.content),
-                        "latest_score": latest_analysis.overall_score if latest_analysis else None,
-                        "analysis_count": self.db.query(ResumeAnalysis).filter(
-                            ResumeAnalysis.resume_id == resume.id
-                        ).count()
+                        "latest_score": latest_analysis.overall_score
+                        if latest_analysis
+                        else None,
+                        "score": score_val,
+                        "ats_score": ats_val,
+                        "analysis_count": analysis_count,
+                        "created_at": upload_iso,
+                        "updated_at": updated_iso,
+                        "has_feedback": latest_analysis is not None,
+                        "has_cover_letter": ActionType.COVER_LETTER_GENERATION
+                        in flags,
+                        "has_learning_path": ActionType.LEARNING_PATH_GENERATION
+                        in flags,
+                        "has_practice_exam": ActionType.PRACTICE_EXAM_GENERATION
+                        in flags,
+                        "job_description": "",
                     }
                     resume_data.append(resume_dict)
-                
+
                 logger.info(f"Retrieved {len(resume_data)} real resumes for user {user_id}")
                 return resume_data
                 
@@ -230,13 +287,22 @@ class RealDataService:
             {
                 "id": "mock_resume_1",
                 "filename": "mock_resume.pdf",
+                "company_name": "mock_resume",
                 "upload_date": "2023-12-01T10:00:00Z",
                 "file_type": "pdf",
                 "content_preview": "Mock resume content for testing...",
                 "character_count": 1250,
                 "latest_score": 85,
+                "score": 85,
                 "analysis_count": 2,
-                "data_source": "mock_testing"
+                "created_at": "2023-12-01T10:00:00Z",
+                "updated_at": "2023-12-01T10:00:00Z",
+                "has_feedback": True,
+                "has_cover_letter": False,
+                "has_learning_path": False,
+                "has_practice_exam": False,
+                "job_description": "",
+                "data_source": "mock_testing",
             }
         ]
     

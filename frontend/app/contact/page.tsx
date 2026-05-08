@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Mail, Phone, Send } from 'lucide-react'
 import Navigation from '@/components/Navigation'
+import { apiService } from '@/services/api'
 
 const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -21,13 +22,7 @@ const ContactPage: React.FC = () => {
     setSubmitStatus('idle')
 
     try {
-      const response = await fetch('/api/contact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      })
+      const response = await apiService.sendContact(formData)
 
       if (!response.ok) {
         throw new Error('Failed to send message')

@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Check, CreditCard, History, HelpCircle, Zap, Brain, BookOpen, Target, BarChart3, FileText, Users, TrendingUp, Shield, Star } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
 import { PromoCodeInput } from '@/components/PromoCodeInput'
+import { apiService } from '@/services/api'
 
 export default function BillingPage() {
   const [selectedPlan, setSelectedPlan] = useState('basic')
@@ -18,15 +19,9 @@ export default function BillingPage() {
     setUpgrading(true)
     try {
       // Create Stripe checkout session
-      const response = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          plan_id: `${planId}_monthly` 
-        })
-      })
+      const response = await apiService.createCheckoutSessionRaw(
+        `${planId}_monthly`
+      )
 
       if (response.ok) {
         const data = await response.json()

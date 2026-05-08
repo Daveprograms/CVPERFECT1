@@ -3,8 +3,9 @@
 import { useState, useRef } from 'react'
 import { toast } from 'react-hot-toast'
 import axios from 'axios'
-import { useAuth } from '@/hooks/useAuth'
 import html2canvas from 'html2canvas'
+
+const sameOriginCredentials = { withCredentials: true }
 
 interface ResumeSnapshotProps {
   resumeId: number
@@ -12,7 +13,6 @@ interface ResumeSnapshotProps {
 }
 
 export default function ResumeSnapshot({ resumeId, content }: ResumeSnapshotProps) {
-  const { user } = useAuth()
   const [loading, setLoading] = useState(false)
   const previewRef = useRef<HTMLDivElement>(null)
 
@@ -26,11 +26,7 @@ export default function ResumeSnapshot({ resumeId, content }: ResumeSnapshotProp
       const response = await axios.post(
         '/api/resume/preview',
         { content },
-        {
-          headers: {
-            Authorization: `Bearer ${(user as any)?.uid || 'placeholder'}`
-          }
-        }
+        sameOriginCredentials
       )
 
       // Set preview content
@@ -69,11 +65,7 @@ export default function ResumeSnapshot({ resumeId, content }: ResumeSnapshotProp
       await axios.post(
         '/api/analytics/snapshot',
         { resume_id: resumeId },
-        {
-          headers: {
-            Authorization: `Bearer ${(user as any)?.uid || 'placeholder'}`
-          }
-        }
+        sameOriginCredentials
       )
 
       toast.success('Snapshot generated successfully')

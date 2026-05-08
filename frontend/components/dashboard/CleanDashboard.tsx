@@ -9,7 +9,16 @@ import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
 export function CleanDashboard() {
-  const { userProfile, onboardingStatus, latestResume, dashboardStats, isLoading } = useDashboard();
+  const {
+    userProfile,
+    onboardingStatus,
+    latestResume,
+    dashboardStats,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useDashboard();
 
   if (isLoading) {
     return (
@@ -18,6 +27,24 @@ export function CleanDashboard() {
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-lg font-medium text-muted-foreground">Loading your dashboard...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
+        <p className="text-lg font-medium text-destructive">Could not load dashboard</p>
+        <p className="mt-2 max-w-md text-sm text-muted-foreground">
+          {error instanceof Error ? error.message : 'Check that the API is running and you are signed in.'}
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="mt-6 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Try again
+        </button>
       </div>
     );
   }

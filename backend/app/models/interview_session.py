@@ -3,6 +3,7 @@ Interview Session Model
 Tracks mock interview sessions and their results
 """
 from sqlalchemy import Column, String, Integer, Float, DateTime, Text, ForeignKey, Enum as SQLEnum, JSON
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
@@ -31,7 +32,7 @@ class InterviewSession(Base):
     __tablename__ = "interview_sessions"
     
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     
     # Session details
     job_title = Column(String, nullable=False)

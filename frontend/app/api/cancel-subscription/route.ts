@@ -1,22 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { fetchBackend } from '@/lib/server/backendBaseUrl'
 
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = cookies()
-    const token = cookieStore.get('access_token')?.value
+    const token = cookieStore.get('auth_token')?.value
 
     if (!token) {
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
     // Forward the request to the backend
-    const response = await fetch(`${process.env.BACKEND_URL}/billing/cancel-subscription`, {
+    const response = await fetchBackend('/api/billing/cancel-subscription', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     })
 
     if (!response.ok) {

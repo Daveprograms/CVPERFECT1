@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { toast } from 'react-hot-toast'
 import { FileText, Calendar, Target, ChevronLeft, ChevronRight, Download, Star, ArrowLeft, Home } from 'lucide-react'
 import Link from 'next/link'
+import { apiService } from '@/services/api'
 
 interface FeedbackItem {
   id: string
@@ -15,7 +16,7 @@ interface FeedbackItem {
   score: number
   ai_analysis_version: string
   created_at: string
-  resume_created_at: string
+  resume_created_at: string | null
 }
 
 interface PaginationInfo {
@@ -25,11 +26,6 @@ interface PaginationInfo {
   items_per_page: number
   has_next: boolean
   has_prev: boolean
-}
-
-interface FeedbackHistoryResponse {
-  feedback_history: FeedbackItem[]
-  pagination: PaginationInfo
 }
 
 export default function FeedbackHistoryPage() {
@@ -47,11 +43,7 @@ export default function FeedbackHistoryPage() {
   const fetchFeedbackHistory = async (page: number) => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/resume/history?page=${page}&limit=10`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch feedback history')
-      }
-      const data: FeedbackHistoryResponse = await response.json()
+      const data = await apiService.getFeedbackHistoryPage(page, 10)
       setFeedbackHistory(data.feedback_history)
       setPagination(data.pagination)
     } catch (error) {
@@ -100,7 +92,7 @@ export default function FeedbackHistoryPage() {
 
   const downloadReport = async (resumeId: string) => {
     try {
-      const response = await fetch(`/api/resume/download/${resumeId}?format=pdf`)
+      const response = await apiService.downloadResume(resumeId, 'pdf')
       if (!response.ok) {
         throw new Error('Download failed')
       }

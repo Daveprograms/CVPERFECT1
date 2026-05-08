@@ -1,57 +1,57 @@
 from datetime import datetime, timedelta
 from typing import Optional
-import jwt
-from fastapi import HTTPException
 import os
+
+import bcrypt
+from jose import ExpiredSignatureError, JWTError, jwt
+from fastapi import HTTPException
+
 from dotenv import load_dotenv
+from pathlib import Path
 
-load_dotenv()
+_BACKEND_ROOT = Path(__file__).resolve().parent.parent.parent
+load_dotenv(_BACKEND_ROOT / ".env")
+load_dotenv(_BACKEND_ROOT / "env")
 
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-here")
+SECRET_KEY = os.getenv("JWT_SECRET") or os.getenv("JWT_SECRET_KEY") or ""
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", str(60 * 24 * 7)))
+
 
 def create_access_token(user_id: str) -> str:
-    """Create a new JWT access token."""
+    if not SECRET_KEY or SECRET_KEY.startswith("change-me"):
+        raise RuntimeError("JWT_SECRET is not configured")
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode = {
-        "sub": user_id,
-        "exp": expire,
-        "iat": datetime.utcnow()
-    }
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    to_encode = {"sub": user_id, "exp": expire, "iat": datetime.utcnow()}
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def verify_token(token: str) -> Optional[str]:
-    """Verify a JWT token and return the user ID if valid."""
+
+def verify_token(token: str) -> str:
+    if not SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Server authentication is not configured")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid authentication credentials"
-            )
+        user_id: Optional[str] = payload.get("sub")
+        if not user_id:
+            raise HTTPException(status_code=401, detail="Invalid authentication credentials")
         return user_id
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=401,
-            detail="Token has expired"
-        )
-    except jwt.JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid authentication credentials"
-        )
+    except ExpiredSignatureError as exc:
+        raise HTTPException(status_code=401, detail="Token has expired") from exc
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail="Invalid or expired token") from exc
+
 
 def get_password_hash(password: str) -> str:
-    """Hash a password using bcrypt."""
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash."""
-    from passlib.context import CryptContext
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    return pwd_context.verify(plain_password, hashed_password) 
+    if not hashed_password:
+        return False
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+    except (ValueError, TypeError):
+        return False

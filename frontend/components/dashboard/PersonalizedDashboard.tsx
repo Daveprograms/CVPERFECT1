@@ -22,6 +22,7 @@ import {
   User,
   ChevronRight
 } from 'lucide-react'
+import { apiService } from '@/services/api'
 
 interface OnboardingData {
   current_role: string
@@ -47,11 +48,8 @@ export default function PersonalizedDashboard({ onboardingData }: PersonalizedDa
 
   const fetchOnboardingData = async () => {
     try {
-      const response = await fetch('/api/onboarding/status')
-      if (response.ok) {
-        const onboardingData = await response.json()
-        setData(onboardingData)
-      }
+      const onboardingData = await apiService.getOnboardingStatus()
+      setData(onboardingData as unknown as OnboardingData)
     } catch (error) {
       console.error('Error fetching onboarding data:', error)
     } finally {
