@@ -104,6 +104,24 @@ export default function OnboardingPage() {
   const sceneRef = useRef<THREE.Scene | null>(null)
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
 
+  // Redirect to dashboard if onboarding already completed
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user?.onboarding_completed) {
+            router.replace('/dashboard')
+          }
+        }
+      } catch {
+        // ignore — let the user proceed with onboarding
+      }
+    }
+    checkOnboarding()
+  }, [router])
+
   // 3D Background Setup
   useEffect(() => {
     if (!canvasRef.current) return
@@ -500,10 +518,16 @@ export default function OnboardingPage() {
   const handleSubmit = async () => {
     setLoading(true)
     try {
-      // Prepare the data
+      // Prepare the data — map camelCase to snake_case for backend
       const onboardingData = {
-        ...data,
-        currentRole: data.currentRole === 'other' ? otherRole : data.currentRole
+        current_role: data.currentRole === 'other' ? otherRole : data.currentRole,
+        job_search_status: data.jobSearchStatus,
+        internship_date_range: data.internshipDateRange || undefined,
+        preferred_job_types: data.preferredJobTypes,
+        top_technologies: data.topTechnologies,
+        help_needed: data.helpNeeded,
+        linkedin_url: data.linkedinUrl || undefined,
+        github_url: data.githubUrl || undefined,
       }
 
       // Submit to backend
@@ -511,6 +535,7 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
         },
         body: JSON.stringify(onboardingData),
       })

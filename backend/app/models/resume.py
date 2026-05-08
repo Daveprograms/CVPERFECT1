@@ -1,5 +1,6 @@
 from sqlalchemy import Column, String, DateTime, Text, Integer, Float, JSON, ForeignKey, Boolean
-from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship, synonym
 from sqlalchemy.sql import func
 from pydantic import BaseModel
 from typing import Optional
@@ -10,12 +11,13 @@ import uuid
 class Resume(Base):
     __tablename__ = "resumes"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    user_id = Column(String, nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     filename = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     file_type = Column(String, nullable=False)
     upload_date = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = synonym("upload_date")
     processing_status = Column(String, default="pending")
     character_count = Column(Integer, default=0)
     
@@ -28,8 +30,8 @@ class Resume(Base):
 class ResumeVersion(Base):
     __tablename__ = "resume_versions"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    resume_id = Column(String, ForeignKey("resumes.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    resume_id = Column(UUID(as_uuid=True), ForeignKey("resumes.id"), nullable=False)
     version_number = Column(Integer, nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -39,8 +41,8 @@ class ResumeVersion(Base):
 class ResumeAnalysis(Base):
     __tablename__ = "resume_analyses"
     
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    resume_id = Column(String, ForeignKey("resumes.id"), nullable=False)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    resume_id = Column(UUID(as_uuid=True), ForeignKey("resumes.id"), nullable=False)
     overall_score = Column(Float, nullable=False)
     ats_score = Column(Float, nullable=False)
     strengths = Column(JSON, nullable=True)

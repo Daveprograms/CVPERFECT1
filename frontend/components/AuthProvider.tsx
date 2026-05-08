@@ -41,6 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      // Ensure cookie is in sync with localStorage (for middleware)
+      document.cookie = `auth_token=${token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
+
       const response = await apiService.getCurrentUser();
       if (response.success && response.data) {
         setAuthState({
@@ -75,8 +78,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiService.login(email, password);
       
       if (response.success && response.data) {
-        // Store token
+        // Store token in localStorage (for API calls) and cookie (for middleware)
         localStorage.setItem('auth_token', response.data.access_token);
+        document.cookie = `auth_token=${response.data.access_token}; path=/; max-age=${7 * 24 * 60 * 60}; SameSite=Lax`;
         
         // Update auth state
         setAuthState({
@@ -137,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       // Always clear local state
       localStorage.removeItem('auth_token');
+      document.cookie = 'auth_token=; path=/; max-age=0; SameSite=Lax';
       setAuthState({
         user: null,
         isLoading: false,

@@ -37,10 +37,10 @@ from ..services.gemini_service import (
     gemini_service,
     GeminiService
 )
-from .auth import get_current_user_test, get_current_user
+from .auth import get_current_user
 from ..middleware.subscription import check_subscription_access, decrement_enhancements
 from ..services.real_data_service import get_data_service, DataSourceValidator
-from ..utils.file_processing import save_uploaded_file, extract_text_from_file, cleanup_temp_file, get_file_info
+from ..utils.file_processing import save_uploaded_file, extract_text_from_file, cleanup_temp_file, get_file_info, validate_file_type, validate_file_size
 from logging import getLogger
 
 logger = getLogger(__name__)
@@ -141,20 +141,20 @@ async def analyze_resume(
         if request and hasattr(request, 'job_description'):
             job_description = request.job_description
         
-        # Use existing Gemini service for analysis
-        from ..services.gemini_service import gemini_service
+        # Use Gemini service for analysis (instantiate fresh to pick up current env key)
+        from ..services.gemini_service import GeminiService
+        gemini_svc = GeminiService()
         
         try:
             # Analyze real resume content
-            analysis_result = await gemini_service.analyze_resume_content(
+            analysis_result = await gemini_svc.analyze_resume_content(
                 resume.content, 
                 job_description
             )
             
             # Save real analysis to database
             analysis = ResumeAnalysis(
-                resume_id=resume_id,
-                user_id=current_user.id,
+                resume_id=resume.id,
                 analysis_data=analysis_result,
                 overall_score=analysis_result.get('overall_score', 0),
                 ats_score=analysis_result.get('ats_score', 0),
@@ -179,33 +179,50 @@ async def analyze_resume(
             }
             
         except Exception as ai_error:
-            logger.error(f"AI analysis failed: {str(ai_error)}")
-            # Return fallback analysis rather than complete failure
-            fallback_analysis = {
-                "analysis_id": None,
-                "overall_score": 50,
-                "ats_score": 45,
-                "strengths": ["Resume uploaded successfully"],
-                "feedback": [{
-                    "category": "technical",
-                    "priority": "medium",
-                    "job_wants": "AI analysis",
-                    "you_have": "Valid resume content",
-                    "fix": "AI analysis temporarily unavailable. Please try again later.",
-                    "example": "Your resume content has been processed successfully",
-                    "bonus": "Consider trying again in a few minutes"
-                }],
-                "recommendations": ["Try analysis again later", "Ensure strong internet connection"],
-                "data_source": "fallback_analysis",
-                "error": "AI analysis temporarily unavailable"
-            }
-            return fallback_analysis
+            import traceback
+            logger.error(f"AI analysis failed: {str(ai_error)}\n{traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(ai_error)}")
             
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Resume analysis failed: {str(e)}")
         raise HTTPException(status_code=500, detail="Analysis failed")
+
+@router.post("/fix")
+async def fix_resume(
+    request: Dict[str, Any],
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    resume_id = request.get("resume_id")
+    if not resume_id:
+        raise HTTPException(status_code=400, detail="resume_id is required")
+
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    content = resume.content
+    if not content or not content.strip():
+        raise HTTPException(status_code=400, detail="Resume content is empty")
+
+    try:
+        from ..services.gemini_service import GeminiService
+        gemini_svc = GeminiService()
+        result = await gemini_svc.fix_resume(
+            content=content,
+            job_description=request.get("job_description"),
+            feedback=request.get("feedback"),
+            extracted_info=request.get("extracted_info")
+        )
+        return result
+    except Exception as e:
+        logger.error(f"Resume fix failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fix resume")
 
 @router.post("/enhance/{resume_id}")
 async def enhance_resume(
@@ -271,7 +288,7 @@ async def enhance_resume(
 async def generate_cover_letter(
     resume_id: str,
     request: CoverLetterRequest,
-    current_user: User = Depends(get_current_user_test),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     print(f"📝 Cover letter generation started for resume {resume_id} by user {current_user.id}")
@@ -334,7 +351,7 @@ async def generate_cover_letter(
 async def generate_learning_path(
     resume_id: str,
     request: CoverLetterRequest,
-    current_user: User = Depends(get_current_user_test),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     # Get resume
@@ -379,7 +396,7 @@ async def generate_learning_path(
 async def generate_practice_exam(
     resume_id: str,
     request: CoverLetterRequest,
-    current_user: User = Depends(get_current_user_test),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Generate a custom practice exam based on resume and job requirements"""
@@ -442,7 +459,7 @@ async def generate_practice_exam(
 
 @router.get("/list", response_model=List[ResumeResponse])
 async def list_resumes(
-    current_user: User = Depends(get_current_user_test),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     return db.query(Resume).filter(
@@ -745,7 +762,7 @@ def generate_pdf_report(analysis_data: dict, resume) -> bytes:
 @router.get("/{resume_id}", response_model=ResumeResponse)
 async def get_resume(
     resume_id: str,
-    current_user: User = Depends(get_current_user_test),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     resume = db.query(Resume).filter(
@@ -761,7 +778,7 @@ async def get_resume(
 @router.delete("/{resume_id}")
 async def delete_resume(
     resume_id: str,
-    current_user: User = Depends(get_current_user_test),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     resume = db.query(Resume).filter(

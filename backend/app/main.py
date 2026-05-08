@@ -43,6 +43,7 @@ async def startup_event():
     print(f"Real Data Enabled: {settings.USE_REAL_DATA}")
     print(f"AI Service: {'ENABLED' if settings.GEMINI_API_KEY else 'DISABLED'}")
     print(f"Database: {settings.DATABASE_URL.split('@')[-1] if '@' in settings.DATABASE_URL else 'local'}")
+    print(f"Gemini API key: {settings.GEMINI_API_KEY}" if settings.GEMINI_API_KEY else "No Gemini API key configured")
 
 # Add middleware to track real data usage
 @app.middleware("http")

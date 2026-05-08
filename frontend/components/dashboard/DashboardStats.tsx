@@ -38,7 +38,7 @@ export function DashboardStats({ resumeCount, totalAnalyses, averageScore }: Das
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="grid grid-cols-1 md:grid-cols-3 gap-4"
+      className="grid grid-cols-1 sm:grid-cols-3 gap-4"
     >
       {stats.map((stat, index) => (
         <motion.div

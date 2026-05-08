@@ -19,26 +19,26 @@ export default function SignUpPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string }>({})
   const router = useRouter()
   const { register } = useAuth()
+
+  const validate = () => {
+    const newErrors: typeof errors = {}
+    if (!formData.name.trim()) newErrors.name = 'Full name is required'
+    if (!formData.email.trim()) newErrors.email = 'Email is required'
+    if (!formData.password) newErrors.password = 'Password is required'
+    else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters'
+    if (!formData.confirmPassword) newErrors.confirmPassword = 'Please confirm your password'
+    else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = 'Passwords do not match'
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
-      toast.error('Please fill in all fields')
-      return
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match')
-      return
-    }
-
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters')
-      return
-    }
+    if (!validate()) return
 
     try {
       setLoading(true)
@@ -112,11 +112,11 @@ export default function SignUpPage() {
               <input
                 id="name"
                 type="text"
-                required
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 bg-background/80 backdrop-blur-sm border border-input rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+                onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setErrors(prev => ({ ...prev, name: undefined })) }}
+                className={`mt-1 block w-full px-3 py-2 bg-background/80 backdrop-blur-sm border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-input focus:border-primary'}`}
               />
+              {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
             </div>
 
             <div>
@@ -126,11 +126,11 @@ export default function SignUpPage() {
               <input
                 id="email"
                 type="email"
-                required
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="mt-1 block w-full px-3 py-2 bg-background/80 backdrop-blur-sm border border-input rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+                onChange={(e) => { setFormData({ ...formData, email: e.target.value }); setErrors(prev => ({ ...prev, email: undefined })) }}
+                className={`mt-1 block w-full px-3 py-2 bg-background/80 backdrop-blur-sm border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ${errors.email ? 'border-red-500 focus:ring-red-500' : 'border-input focus:border-primary'}`}
               />
+              {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
             </div>
 
             <div>
@@ -141,10 +141,9 @@ export default function SignUpPage() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  required
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="block w-full px-3 py-2 bg-background/80 backdrop-blur-sm border border-input rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+                  onChange={(e) => { setFormData({ ...formData, password: e.target.value }); setErrors(prev => ({ ...prev, password: undefined })) }}
+                  className={`block w-full px-3 py-2 bg-background/80 backdrop-blur-sm border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ${errors.password ? 'border-red-500 focus:ring-red-500' : 'border-input focus:border-primary'}`}
                 />
                 <button
                   type="button"
@@ -154,6 +153,7 @@ export default function SignUpPage() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
             </div>
 
             <div>
@@ -164,10 +164,9 @@ export default function SignUpPage() {
                 <input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  required
                   value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  className="block w-full px-3 py-2 bg-background/80 backdrop-blur-sm border border-input rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+                  onChange={(e) => { setFormData({ ...formData, confirmPassword: e.target.value }); setErrors(prev => ({ ...prev, confirmPassword: undefined })) }}
+                  className={`block w-full px-3 py-2 bg-background/80 backdrop-blur-sm border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200 ${errors.confirmPassword ? 'border-red-500 focus:ring-red-500' : 'border-input focus:border-primary'}`}
                 />
                 <button
                   type="button"
@@ -177,6 +176,7 @@ export default function SignUpPage() {
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {errors.confirmPassword && <p className="mt-1 text-sm text-red-500">{errors.confirmPassword}</p>}
             </div>
 
             <button

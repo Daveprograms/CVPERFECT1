@@ -34,7 +34,7 @@ export function CleanDashboard() {
     <div className="space-y-6">
       {/* Welcome Section */}
       <DashboardWelcome
-        userName={userProfile?.full_name || 'User'}
+        userName={userProfile?.full_name || userProfile?.fullName || 'User'}
         jobSearchStatus={onboardingStatus?.job_search_status}
         currentRole={onboardingStatus?.current_role}
       />
@@ -47,7 +47,7 @@ export function CleanDashboard() {
       />
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Latest Resume Card */}
         <LatestResumeCard
           resume={latestResume}

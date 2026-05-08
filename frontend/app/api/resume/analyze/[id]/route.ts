@@ -1,13 +1,11 @@
-import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { NextResponse, NextRequest } from 'next/server'
 
 export async function POST(
-  req: Request,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const cookieStore = cookies()
-    const token = cookieStore.get('auth_token')?.value
+    const token = req.headers.get('authorization')?.replace('Bearer ', '')
 
     if (!token) {
       return new NextResponse(JSON.stringify({ detail: 'Unauthorized' }), {

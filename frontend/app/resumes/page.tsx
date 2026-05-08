@@ -21,7 +21,7 @@ import {
   ChevronRight
 } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { getAuthHeaders, isAuthenticated } from '@/lib/auth'
+import { getAuthToken } from '@/lib/auth'
 
 interface Resume {
   id: string;
@@ -63,7 +63,7 @@ export default function ResumesPage() {
   const [deletingResumeId, setDeletingResumeId] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isAuthenticated()) {
+    if (!getAuthToken()) {
       router.push('/auth/signin')
       return
     }
@@ -75,7 +75,7 @@ export default function ResumesPage() {
     try {
       setLoading(true)
       const response = await fetch(`/api/resume/history?page=${page}&limit=10`, {
-        headers: getAuthHeaders()
+        headers: { Authorization: `Bearer ${getAuthToken()}` }
       })
 
       if (!response.ok) {
@@ -107,7 +107,7 @@ export default function ResumesPage() {
       setDeletingResumeId(resumeId)
       const response = await fetch(`/api/resume/delete/${resumeId}`, {
         method: 'DELETE',
-        headers: getAuthHeaders()
+        headers: { Authorization: `Bearer ${getAuthToken()}` }
       })
 
       if (!response.ok) {

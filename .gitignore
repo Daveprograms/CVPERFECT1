@@ -22,6 +22,7 @@ wheels/
 MANIFEST
 .env
 .venv
+venv311
 env/
 venv/
 ENV/

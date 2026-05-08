@@ -207,6 +207,9 @@ export default function UploadResumePage() {
       // Upload resume
       const uploadResponse = await fetch('/api/resume/upload', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
         body: formData
       })
 
@@ -227,8 +230,11 @@ export default function UploadResumePage() {
       const uploadData = await uploadResponse.json()
       console.log('✅ Upload successful:', uploadData)
       
+      // Backend returns resume_id (not id)
+      const resumeId = uploadData.resume_id || uploadData.id
+      
       // Store resume ID for later use (PDF download)
-      localStorage.setItem('currentResumeId', uploadData.id)
+      localStorage.setItem('currentResumeId', resumeId)
       
       // Small delay to show 100% progress
       await new Promise(resolve => setTimeout(resolve, 500))
@@ -249,10 +255,11 @@ export default function UploadResumePage() {
       }, 300)
 
       // Get analysis using the resume ID from upload response
-      const analysisResponse = await fetch(`/api/resume/analyze/${uploadData.id}`, {
+      const analysisResponse = await fetch(`/api/resume/analyze/${resumeId}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({
           job_description: jobDescription
@@ -274,10 +281,34 @@ export default function UploadResumePage() {
       await new Promise(resolve => setTimeout(resolve, 500))
       
       // Update state with analysis data
+      // Backend returns flat feedback array [{category, job_wants, fix, ...}]
+      // UI expects grouped [{category, items: [...]}] — normalize here
+      const rawFeedback: any[] = analysisData.feedback || []
+      const groupedFeedback = rawFeedback.reduce((acc: any[], item: any) => {
+        const existing = acc.find((g: any) => g.category === item.category)
+        const feedbackItem = {
+          job_wants: item.job_wants || '',
+          you_have: item.you_have || '',
+          fix: item.fix || '',
+          example_line: item.example || item.example_line || '',
+          bonus: item.bonus || '',
+          severity: item.priority || item.severity || 'medium',
+        }
+        if (existing) {
+          existing.items.push(feedbackItem)
+        } else {
+          acc.push({ category: item.category || 'general', emoji: item.emoji || '🔧', items: [feedbackItem] })
+        }
+        return acc
+      }, [])
+
       setAnalysis({
         ...analysisData,
+        score: analysisData.score ?? analysisData.overall_score ?? 0,
+        feedback: groupedFeedback,
+        strengths: analysisData.strengths || [],
         jobMatches: analysisData.job_matches || [],
-        originalResume: uploadData.content,
+        originalResume: resumeId || '',  // resume_id used for fix requests
         fixedResume: null,
         improvements: analysisData.improvements || []
       })
@@ -310,7 +341,7 @@ export default function UploadResumePage() {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          content: analysis.originalResume,
+          resume_id: analysis.originalResume,
           job_description: jobDescription,
           feedback: analysis.feedback,
           extracted_info: analysis.extracted_info
@@ -339,7 +370,7 @@ export default function UploadResumePage() {
 
   const renderFeedbackCategory = (category: string) => {
     if (!analysis) return null
-    const categoryFeedback = analysis.feedback.find(f => f.category === category)
+    const categoryFeedback = analysis.feedback?.find(f => f.category === category)
     if (!categoryFeedback) return null
 
     return (
@@ -352,7 +383,7 @@ export default function UploadResumePage() {
           </span>
         </div>
         <ul className="space-y-4">
-          {categoryFeedback.items.map((item, index) => (
+          {(categoryFeedback.items || []).map((item, index) => (
             <li key={index} className="border-l-4 border-primary pl-4">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
@@ -537,16 +568,16 @@ export default function UploadResumePage() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm text-gray-500">Name</p>
-                    <p className="font-medium">{analysis.extracted_info.name}</p>
+                    <p className="font-medium">{analysis.extracted_info?.name || '—'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Experience</p>
-                    <p className="font-medium">{analysis.extracted_info.experience.length} positions</p>
+                    <p className="font-medium">{analysis.extracted_info?.experience?.length ?? 0} positions</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Skills</p>
                     <p className="font-medium">
-                      {analysis.extracted_info.skills.reduce((acc, curr) => acc + curr.items.length, 0)} skills
+                      {analysis.extracted_info?.skills?.reduce((acc, curr) => acc + (curr.items?.length ?? 0), 0) ?? 0} skills
                     </p>
                   </div>
                 </div>
@@ -565,7 +596,7 @@ export default function UploadResumePage() {
                     <div key={index} className="flex items-start space-x-3">
                       <div className="text-green-600 dark:text-green-400 mt-1">•</div>
                       <div>
-                        <p className="font-medium text-green-800 dark:text-green-200">{strength.title}</p>
+                        <p className="font-medium text-green-800 dark:text-green-200">{strength}</p>
                         <p className="text-sm text-green-700 dark:text-green-300 mt-1">{strength.description}</p>
                         {strength.relevance && (
                           <p className="text-xs text-green-600 dark:text-green-400 mt-1 italic">{strength.relevance}</p>
@@ -607,7 +638,7 @@ export default function UploadResumePage() {
                 >
                   All Categories
                 </button>
-                {analysis.feedback.map((category) => (
+                {(analysis.feedback || []).map((category) => (
                   <button
                     key={category.category}
                     onClick={() => setSelectedCategory(category.category)}
@@ -625,7 +656,7 @@ export default function UploadResumePage() {
               {/* Feedback Content */}
               <div className="space-y-6">
                 {selectedCategory === 'all'
-                  ? analysis.feedback.map((category) => renderFeedbackCategory(category.category))
+                  ? (analysis.feedback || []).map((category) => renderFeedbackCategory(category.category))
                   : renderFeedbackCategory(selectedCategory)}
               </div>
             </div>

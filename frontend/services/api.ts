@@ -19,7 +19,7 @@ class ApiService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    this.baseURL = 'http://localhost:8000';
   }
 
   private async request<T>(
@@ -73,12 +73,12 @@ class ApiService {
   async login(email: string, password: string): Promise<APIResponse<{ access_token: string; user: User }>> {
     return this.request('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username: email, password }),
+      body: JSON.stringify({ email, password }),
     });
   }
 
   async register(userData: { email: string; password: string; full_name: string }): Promise<APIResponse<User>> {
-    return this.request('/api/auth/register', {
+    return this.request('/api/auth/signup', {
       method: 'POST',
       body: JSON.stringify(userData),
     });

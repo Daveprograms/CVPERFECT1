@@ -15,7 +15,7 @@ export async function GET() {
     }
 
     // Get dashboard data from backend
-    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8003'}/api/dashboard`, {
+    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8000'}/api/dashboard`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }

@@ -1,11 +1,9 @@
-import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { NextResponse, NextRequest } from 'next/server'
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
-    // Get the auth token
-    const cookieStore = cookies()
-    const token = cookieStore.get('auth_token')?.value
+    // Get the auth token from Authorization header
+    const token = req.headers.get('authorization')?.replace('Bearer ', '')
 
     if (!token) {
       return new NextResponse(
@@ -15,7 +13,7 @@ export async function GET(req: Request) {
     }
 
     // Get onboarding status from backend
-    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8003'}/api/onboarding/status`, {
+    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8000'}/api/onboarding/status`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }

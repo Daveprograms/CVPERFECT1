@@ -4,11 +4,12 @@ Configuration settings for CVPerfect backend
 
 import os
 from typing import Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Application settings"""
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     
     # Environment
     ENVIRONMENT: str = "development"
@@ -51,9 +52,6 @@ class Settings(BaseSettings):
     # Redis (optional)
     REDIS_URL: str = "redis://localhost:6379/0"
     
-    class Config:
-        env_file = ".env"
-        
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         

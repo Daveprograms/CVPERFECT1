@@ -1,10 +1,8 @@
-import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { NextResponse, NextRequest } from 'next/server'
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    const cookieStore = cookies()
-    const token = cookieStore.get('auth_token')?.value
+    const token = req.headers.get('authorization')?.replace('Bearer ', '')
 
     console.log('=== RESUME UPLOAD DEBUG ===')
     console.log('1. Auth token exists:', !!token)

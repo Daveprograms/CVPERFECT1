@@ -46,27 +46,30 @@ export function DashboardWelcome({ userName, jobSearchStatus, currentRole }: Das
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-r from-primary/10 to-purple-500/10 rounded-lg p-6 border border-border"
+      className="bg-gradient-to-r from-primary/10 via-purple-500/5 to-primary/5 rounded-xl p-5 sm:p-6 border border-border"
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
             Welcome back, {userName}! 👋
           </h1>
-          <div className="flex items-center space-x-4 mt-2 text-sm text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-sm text-muted-foreground">
             {roleDisplay && (
               <div className="flex items-center space-x-1">
-                <User className="h-4 w-4" />
+                <User className="h-3.5 w-3.5 shrink-0" />
                 <span>{roleDisplay}</span>
               </div>
             )}
             {statusInfo && (
               <div className="flex items-center space-x-1">
-                <statusInfo.icon className={`h-4 w-4 ${statusInfo.color}`} />
+                <statusInfo.icon className={`h-3.5 w-3.5 shrink-0 ${statusInfo.color}`} />
                 <span className={statusInfo.color}>{statusInfo.label}</span>
               </div>
             )}
           </div>
+        </div>
+        <div className="w-12 h-12 bg-gradient-to-br from-primary to-purple-600 rounded-full flex items-center justify-center shrink-0 self-start sm:self-auto">
+          <span className="text-xl">👤</span>
         </div>
       </div>
     </motion.div>

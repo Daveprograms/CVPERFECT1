@@ -1,15 +1,13 @@
-import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { NextResponse, NextRequest } from 'next/server'
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const onboardingData = await req.json()
-    
+
     console.log('📝 Onboarding data received:', onboardingData)
 
-    // Get the auth token
-    const cookieStore = cookies()
-    const token = cookieStore.get('auth_token')?.value
+    // Get the auth token from Authorization header
+    const token = req.headers.get('authorization')?.replace('Bearer ', '')
 
     if (!token) {
       return new NextResponse(
@@ -19,7 +17,7 @@ export async function POST(req: Request) {
     }
 
     // Send data to backend
-    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8003'}/api/onboarding`, {
+    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8000'}/api/onboarding`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

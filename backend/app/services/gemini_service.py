@@ -1,14 +1,14 @@
 """
 Enhanced Gemini Service
-Uses existing Gemini API key and model (not Pro tier)
-Implements all AI features for CVPerfect
+Uses google-genai SDK (new, replaces deprecated google.generativeai)
 """
 
 import logging
 import json
 import asyncio
+import re
 from typing import Dict, Any, List, Optional
-import google.generativeai as genai
+from google import genai
 from ..core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -21,19 +21,15 @@ class GeminiService:
     """
     
     def __init__(self, api_key: str = None):
-        # Use existing API key from settings
         self.api_key = api_key or settings.GEMINI_API_KEY
         
         if not self.api_key or self.api_key == "your-existing-gemini-api-key":
             raise ValueError("Real Gemini API key required! Update GEMINI_API_KEY in environment.")
         
-        # Configure with existing API key
-        genai.configure(api_key=self.api_key)
+        self.client = genai.Client(api_key=self.api_key)
+        self.model = 'gemini-2.0-flash'
         
-        # Use existing model (not Pro)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        logger.info("GeminiService initialized with existing API key")
+        logger.info("GeminiService initialized with google-genai SDK")
     
     async def analyze_resume_content(
         self, 
@@ -43,27 +39,21 @@ class GeminiService:
         """
         Analyze real resume content using existing Gemini integration
         """
-        try:
-            if not resume_text.strip():
-                raise ValueError("Resume text cannot be empty")
-            
-            # Create comprehensive analysis prompt
-            analysis_prompt = self._create_resume_analysis_prompt(resume_text, job_description)
-            
-            # Generate analysis using existing Gemini model
-            response = self.model.generate_content(analysis_prompt)
-            analysis_text = response.text.strip()
-            
-            # Parse structured response
-            analysis_result = self._parse_analysis_response(analysis_text)
-            
-            logger.info(f"Resume analysis completed: {analysis_result.get('overall_score', 0)}/100")
-            return analysis_result
-            
-        except Exception as e:
-            logger.error(f"Resume analysis failed: {str(e)}")
-            # Return fallback analysis rather than failing
-            return self._get_fallback_analysis()
+        if not resume_text.strip():
+            raise ValueError("Resume text cannot be empty")
+        
+        # Create comprehensive analysis prompt
+        analysis_prompt = self._create_resume_analysis_prompt(resume_text, job_description)
+        
+        # Generate analysis using new google.genai SDK
+        response = self.client.models.generate_content(model=self.model, contents=analysis_prompt)
+        analysis_text = response.text.strip()
+        
+        # Parse structured response
+        analysis_result = self._parse_analysis_response(analysis_text)
+        
+        logger.info(f"Resume analysis completed: {analysis_result.get('overall_score', 0)}/100")
+        return analysis_result
     
     async def generate_cover_letter(
         self, 
@@ -99,7 +89,7 @@ class GeminiService:
             Generate a complete cover letter without any placeholders.
             """
             
-            response = self.model.generate_content(cover_letter_prompt)
+            response = self.client.models.generate_content(model=self.model, contents=cover_letter_prompt)
             cover_letter = response.text.strip()
             
             logger.info("Cover letter generated successfully")
@@ -154,7 +144,7 @@ class GeminiService:
             Focus on practical, actionable learning recommendations.
             """
             
-            response = self.model.generate_content(learning_prompt)
+            response = self.client.models.generate_content(model=self.model, contents=learning_prompt)
             learning_text = response.text.strip()
             
             # Parse JSON response
@@ -210,7 +200,7 @@ class GeminiService:
             Include a mix of technical and behavioral questions relevant to the resume and role.
             """
             
-            response = self.model.generate_content(exam_prompt)
+            response = self.client.models.generate_content(model=self.model, contents=exam_prompt)
             exam_text = response.text.strip()
             
             # Parse JSON response
@@ -256,7 +246,7 @@ class GeminiService:
             Be specific and actionable in your analysis.
             """
             
-            response = self.model.generate_content(compatibility_prompt)
+            response = self.client.models.generate_content(model=self.model, contents=compatibility_prompt)
             compatibility_text = response.text.strip()
             
             # Parse JSON response
@@ -269,9 +259,86 @@ class GeminiService:
             logger.error(f"Job compatibility analysis failed: {str(e)}")
             raise
     
+    async def fix_resume(
+        self,
+        content: str,
+        job_description: str = None,
+        feedback: List[Dict[str, Any]] = None,
+        extracted_info: Dict[str, Any] = None
+    ) -> Dict[str, Any]:
+        """
+        Fix and improve resume content based on analysis feedback
+        """
+        try:
+            feedback_summary = ""
+            if feedback:
+                items = []
+                for category in feedback:
+                    cat_name = category.get("category", "")
+                    for item in category.get("items", []):
+                        fix = item.get("fix", "")
+                        if fix:
+                            items.append(f"- [{cat_name}] {fix}")
+                feedback_summary = "\n".join(items)
+
+            fix_prompt = f"""
+You are a professional resume writer. Rewrite and improve the following resume based on the feedback provided.
+
+ORIGINAL RESUME:
+{content}
+
+{f"TARGET JOB DESCRIPTION:{chr(10)}{job_description}" if job_description else ""}
+
+FEEDBACK TO ADDRESS:
+{feedback_summary if feedback_summary else "Improve clarity, impact, and ATS compatibility."}
+
+Instructions:
+- Fix all issues mentioned in the feedback
+- Improve bullet points to use strong action verbs and quantifiable achievements
+- Ensure ATS-friendly formatting
+- Keep all factual information accurate — do not fabricate experience
+- Return the complete improved resume text followed by a JSON block listing improvements
+
+Respond in this exact format:
+<resume>
+[full improved resume text here]
+</resume>
+<improvements>
+[
+  {{"category": "category_name", "before": "original text", "after": "improved text", "reason": "why this was changed"}}
+]
+</improvements>
+"""
+            response = self.client.models.generate_content(model=self.model, contents=fix_prompt)
+            result_text = response.text.strip()
+
+            # Extract resume content
+            import re
+            resume_match = re.search(r'<resume>(.*?)</resume>', result_text, re.DOTALL)
+            fixed_content = resume_match.group(1).strip() if resume_match else result_text
+
+            # Extract improvements JSON
+            improvements_match = re.search(r'<improvements>(.*?)</improvements>', result_text, re.DOTALL)
+            improvements = []
+            if improvements_match:
+                try:
+                    improvements = json.loads(improvements_match.group(1).strip())
+                except json.JSONDecodeError:
+                    pass
+
+            logger.info("Resume fixed successfully")
+            return {
+                "fixedContent": fixed_content,
+                "improvements": improvements
+            }
+
+        except Exception as e:
+            logger.error(f"Resume fix failed: {str(e)}")
+            raise
+
     async def optimize_linkedin_profile(
-        self, 
-        resume_content: str, 
+        self,
+        resume_content: str,
         target_roles: List[str] = None
     ) -> Dict[str, Any]:
         """
@@ -307,7 +374,7 @@ class GeminiService:
             Focus on SEO optimization and professional branding.
             """
             
-            response = self.model.generate_content(linkedin_prompt)
+            response = self.client.models.generate_content(model=self.model, contents=linkedin_prompt)
             linkedin_text = response.text.strip()
             
             # Parse JSON response
@@ -407,8 +474,6 @@ class GeminiService:
     
     def _extract_json_from_text(self, text: str) -> Optional[str]:
         """Extract JSON from text that might contain markdown formatting"""
-        import re
-        
         # Try to find JSON wrapped in code blocks
         json_patterns = [
             r'```json\s*(.*?)\s*```',

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, HttpUrl, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from uuid import UUID
 
 class ResumeBase(BaseModel):
     job_description: Optional[str] = None
@@ -17,28 +18,22 @@ class ResumeVersionCreate(ResumeVersionBase):
     pass
 
 class ResumeVersionResponse(ResumeVersionBase):
-    id: int
-    resume_id: int
+    id: UUID
+    resume_id: UUID
     created_at: datetime
 
     class Config:
         from_attributes = True
 
 class ResumeResponse(ResumeBase):
-    id: int
-    user_id: int
-    original_content: str
-    enhanced_content: Optional[str] = None
-    score: Optional[float] = None
-    feedback: Optional[Dict[str, Any]] = None
-    extracted_info: Optional[Dict[str, Any]] = None
-    job_matches: Optional[List[Dict[str, Any]]] = None
-    improvements: Optional[List[Dict[str, Any]]] = None
-    cover_letter: Optional[str] = None
-    learning_path: Optional[Dict[str, Any]] = None
+    id: UUID
+    user_id: UUID
+    filename: str
+    content: str
+    file_type: Optional[str] = None
+    processing_status: Optional[str] = None
+    character_count: Optional[int] = None
     created_at: datetime
-    updated_at: datetime
-    versions: List[ResumeVersionResponse] = []
 
     class Config:
         from_attributes = True

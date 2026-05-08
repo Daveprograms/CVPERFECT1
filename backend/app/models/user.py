@@ -21,7 +21,6 @@ class User(Base):
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     full_name = Column(String)
-    firebase_uid = Column(String, unique=True, index=True, nullable=True)
     stripe_customer_id = Column(String, unique=True, index=True, nullable=True)
     subscription_type = Column(Enum(SubscriptionType), default=SubscriptionType.FREE)
     remaining_enhancements = Column(Integer, default=0)  # For one-time users

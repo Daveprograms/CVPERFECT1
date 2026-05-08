@@ -47,7 +47,11 @@ export default function PersonalizedDashboard({ onboardingData }: PersonalizedDa
 
   const fetchOnboardingData = async () => {
     try {
-      const response = await fetch('/api/onboarding/status')
+      const response = await fetch('/api/onboarding/status', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+        },
+      })
       if (response.ok) {
         const onboardingData = await response.json()
         setData(onboardingData)

@@ -2,21 +2,24 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
+import importlib.util
 from dotenv import load_dotenv
 
-# Load environment variables from 'env' file
-load_dotenv('env')
+load_dotenv()
 
 SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Fallback to SQLite for development if no DATABASE_URL is set
 if not SQLALCHEMY_DATABASE_URL:
-    SQLALCHEMY_DATABASE_URL = "sqlite:///./cvperfect.db"
-    print("⚠️ No DATABASE_URL found, using SQLite for development")
-
-# Use psycopg2 instead of psycopg
-if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgresql://"):
-    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://")
+    raise RuntimeError("DATABASE_URL environment variable is not set")
+if SQLALCHEMY_DATABASE_URL.startswith("postgresql://"):
+    if importlib.util.find_spec("psycopg2"):
+        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
+    elif importlib.util.find_spec("psycopg"):
+        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgresql://", "postgresql+psycopg://", 1)
+    else:
+        raise RuntimeError(
+            "PostgreSQL driver not found. Install either 'psycopg2-binary' or 'psycopg[binary]'."
+        )
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
