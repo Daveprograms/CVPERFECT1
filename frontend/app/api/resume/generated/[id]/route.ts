@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
@@ -14,7 +16,7 @@ async function proxy(request: NextRequest, id: string, method: 'GET' | 'PUT' | '
     return NextResponse.json({ detail: 'Unauthorized' }, { status: 401 })
   }
 
-  const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/generated/${id}`
+  const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/generated/${id}`
   const init: RequestInit = {
     method,
     headers: {

@@ -126,7 +126,7 @@ const demoApplications: Application[] = [
     appliedDate: '2024-01-12',
     status: 'applied',
     matchScore: 78,
-    responseTime: null,
+    responseTime: undefined,
     lastContact: '2024-01-12',
     notes: 'Application submitted, waiting for response. Company focuses on AI/ML projects.',
     source: 'bulk-apply',

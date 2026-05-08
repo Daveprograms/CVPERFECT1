@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
@@ -16,7 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     }
 
     const body = await request.text()
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/generated/${params.id}/ai-generate`
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/generated/${params.id}/ai-generate`
     const response = await fetch(backendUrl, {
       method: 'POST',
       headers: {

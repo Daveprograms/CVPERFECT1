@@ -39,7 +39,7 @@ export const AutoApplyDemo: React.FC<AutoApplyDemoProps> = ({ onStatsUpdate }) =
     onStatsUpdate(stats);
   }, [appliedJobs, onStatsUpdate]);
 
-  const handleApply = (jobId: number) => {
+  const handleApply = (jobId: string) => {
     setJobs(prev => prev.map(job => 
       job.id === jobId ? { ...job, applied: true } : job
     ));

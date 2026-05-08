@@ -363,8 +363,8 @@ export const AIResumeAnalysisDemo: React.FC<AIResumeAnalysisDemoProps> = ({ onAn
                             </div>
                             
                             <div className="mt-2">
-                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(item.severity)}`}>
-                                {item.severity.toUpperCase()} PRIORITY
+                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getSeverityColor(item.severity ?? 'low')}`}>
+                                {(item.severity ?? 'low').toUpperCase()} PRIORITY
                               </span>
                             </div>
                           </div>
@@ -475,7 +475,7 @@ export const AIResumeAnalysisDemo: React.FC<AIResumeAnalysisDemoProps> = ({ onAn
                 Recommendations
               </h3>
               <div className="space-y-3">
-                {analysis!.recommendations.map((recommendation, index) => (
+                {(analysis!.recommendations ?? []).map((recommendation, index) => (
                   <motion.div
                     key={index}
                     initial={{ opacity: 0, x: -20 }}

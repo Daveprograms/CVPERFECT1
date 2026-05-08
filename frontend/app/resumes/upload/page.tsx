@@ -596,8 +596,10 @@ export default function UploadResumePage() {
                     <div key={index} className="flex items-start space-x-3">
                       <div className="text-green-600 dark:text-green-400 mt-1">•</div>
                       <div>
-                        <p className="font-medium text-green-800 dark:text-green-200">{strength}</p>
-                        <p className="text-sm text-green-700 dark:text-green-300 mt-1">{strength.description}</p>
+                        <p className="font-medium text-green-800 dark:text-green-200">{strength.title}</p>
+                        {strength.description && (
+                          <p className="text-sm text-green-700 dark:text-green-300 mt-1">{strength.description}</p>
+                        )}
                         {strength.relevance && (
                           <p className="text-xs text-green-600 dark:text-green-400 mt-1 italic">{strength.relevance}</p>
                         )}

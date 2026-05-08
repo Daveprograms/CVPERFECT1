@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(
@@ -7,7 +9,7 @@ export async function POST(
   try {
     const body = await request.json()
     const { job_description } = body
-    
+
     if (!job_description) {
       return NextResponse.json(
         { error: 'Job description is required' },
@@ -17,9 +19,9 @@ export async function POST(
 
     // Get auth token from session/cookies
     const authHeader = request.headers.get('authorization') || ''
-    
+
     // Call backend API
-    const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/learning-path/${params.id}`, {
+    const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/learning-path/${params.id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

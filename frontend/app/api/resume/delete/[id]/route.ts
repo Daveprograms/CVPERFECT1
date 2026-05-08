@@ -5,12 +5,12 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   console.log('🗑️ Delete resume API called for resume:', params.id)
-  
+
   try {
     // Get auth token from request headers
     const authHeader = request.headers.get('authorization') || ''
     console.log('🔐 Authorization header received:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NONE')
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('❌ Missing or invalid authorization header')
       return NextResponse.json(
@@ -18,11 +18,11 @@ export async function DELETE(
         { status: 401 }
       )
     }
-    
+
     // Call backend API to delete resume
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/${params.id}`
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/${params.id}`
     console.log('🌐 Calling backend:', backendUrl)
-    
+
     const backendResponse = await fetch(backendUrl, {
       method: 'DELETE',
       headers: {

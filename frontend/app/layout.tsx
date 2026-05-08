@@ -7,6 +7,11 @@ import { Providers } from '@/components/providers'
 import FooterWrapper from '@/components/FooterWrapper'
 import ErrorBoundary from '@/components/ErrorBoundary'
 
+// This is a fully dynamic client app — disable static prerendering globally.
+// Hooks like usePathname require the React navigation context which only
+// exists at runtime, not during Next.js static generation.
+export const dynamic = 'force-dynamic'
+
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {

@@ -1,19 +1,79 @@
 // Comprehensive demo data for CVPerfect platform
 
+export interface DemoJob {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  salary: string;
+  matchScore: number;
+  match_score?: number;
+  tags: string[];
+  description?: string;
+  type?: string;
+  applied?: boolean;
+}
+
+export interface DemoApplicationStats {
+  total_applications: number;
+  success_rate: number;
+  average_match_score: number;
+  applications_today: number;
+  applications_this_week: number;
+  recent: Array<{
+    id: string;
+    job_title: string;
+    company: string;
+    applied_at: string;
+    status: string;
+  }>;
+}
+
+export interface DemoCompany {
+  id: string;
+  name: string;
+  industry: string;
+  location: string;
+  currentOpenings: number;
+  status: string;
+  matchScore: number;
+  website?: string;
+  glassdoorRating?: number;
+  salaryRange?: string;
+  notes?: string;
+}
+
+export const demoJobs: DemoJob[] = [
+  { id: '1', title: 'Senior React Developer', company: 'TechCorp Inc.', location: 'San Francisco, CA', salary: '$120k–$150k', matchScore: 92, tags: ['React', 'TypeScript', 'AWS'] },
+  { id: '2', title: 'Full Stack Engineer', company: 'StartupXYZ', location: 'Remote', salary: '$100k–$130k', matchScore: 88, tags: ['Node.js', 'React', 'MongoDB'] },
+  { id: '3', title: 'Frontend Developer', company: 'BigTech Co.', location: 'New York, NY', salary: '$110k–$140k', matchScore: 85, tags: ['Vue.js', 'CSS', 'JavaScript'] },
+  { id: '4', title: 'Software Engineer', company: 'Innovation Labs', location: 'Austin, TX', salary: '$95k–$125k', matchScore: 78, tags: ['Python', 'Django', 'PostgreSQL'] },
+];
+
+export const demoWatchlist: DemoCompany[] = [
+  { id: '1', name: 'Google', industry: 'Technology', location: 'Mountain View, CA', currentOpenings: 12, status: 'applied', matchScore: 95, website: 'https://careers.google.com', glassdoorRating: 4.4, salaryRange: '$150k–$200k' },
+  { id: '2', name: 'Microsoft', industry: 'Technology', location: 'Redmond, WA', currentOpenings: 8, status: 'interviewing', matchScore: 92, website: 'https://careers.microsoft.com', glassdoorRating: 4.2, salaryRange: '$140k–$180k' },
+  { id: '3', name: 'Netflix', industry: 'Entertainment', location: 'Los Gatos, CA', currentOpenings: 5, status: 'watching', matchScore: 88, website: 'https://jobs.netflix.com', glassdoorRating: 4.1, salaryRange: '$160k–$220k' },
+];
+
+
 export interface DemoResumeAnalysis {
   overall_score: number;
   ats_score: number;
   strengths: string[];
   feedback: Array<{
     category: string;
+    emoji?: string;
     items: Array<{
       job_wants: string;
       you_have: string;
       fix: string;
       example_line: string;
       bonus?: string;
+      severity?: 'high' | 'medium' | 'low';
     }>;
   }>;
+  recommendations?: string[];
 }
 
 export const demoResumeAnalysis: DemoResumeAnalysis = {

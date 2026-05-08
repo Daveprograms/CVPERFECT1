@@ -8,7 +8,7 @@ import { DemoJob } from '@/services/mocks/demoData';
 
 interface JobCardProps {
   job: DemoJob;
-  onApply: (jobId: number) => void;
+  onApply: (jobId: string) => void;
   showCheckbox?: boolean;
   isSelected?: boolean;
   onSelect?: (jobId: number, selected: boolean) => void;

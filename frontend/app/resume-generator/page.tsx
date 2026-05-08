@@ -20,7 +20,7 @@ import {
   Wand2,
 } from 'lucide-react'
 import DashboardLayout from '@/components/DashboardLayout'
-import { getAuthToken } from '@/lib/auth'
+import { getAuthToken, getAuthHeaders } from '@/lib/auth'
 
 type TemplateKey = 'classic' | 'sidebar' | 'modern' | 'executive' | 'minimal'
 
@@ -124,8 +124,8 @@ function emptyToDash(value: string) {
 
 function normalizeResumeData(data: Partial<ResumeData> | undefined): ResumeData {
   const source = data || {}
-  const personal = source.personal_info || {}
-  const summaryInputs = source.summary_inputs || {}
+  const personal: Partial<ResumeData['personal_info']> = source.personal_info || {}
+  const summaryInputs: Partial<ResumeData['summary_inputs']> = source.summary_inputs || {}
   return {
     personal_info: {
       full_name: personal.full_name || '',
@@ -176,8 +176,23 @@ function normalizeResumeData(data: Partial<ResumeData> | undefined): ResumeData 
 function parseQuickImportText(text: string): Partial<ResumeData> {
   const lines = text.split(/\n+/).map((line) => line.trim()).filter(Boolean)
   const parsed: Partial<ResumeData> = {
-    personal_info: {},
-    summary_inputs: {},
+    personal_info: {
+      full_name: '',
+      target_title: '',
+      email: '',
+      phone: '',
+      location: '',
+      linkedin_url: '',
+      website: '',
+    },
+    summary_inputs: {
+      current_role: '',
+      years_experience: '',
+      specialization: '',
+      highlights: [],
+      target_role: '',
+      target_company_type: '',
+    },
     skills: [],
     experience: [],
   }
@@ -807,8 +822,7 @@ export default function ResumeGeneratorPage() {
   const fetchAll = async () => {
     try {
       setLoadingList(true)
-      const token = getAuthToken()
-      const headers = token ? { Authorization: `Bearer ${token}` } : {}
+      const headers = getAuthHeaders()
 
       const [listRes, templateRes, meRes] = await Promise.all([
         fetch('/api/resume/generated', { headers }),

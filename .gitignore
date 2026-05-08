@@ -52,8 +52,10 @@ yarn-error.log*
 # Project specific
 backend/.env
 backend/firebase-credentials.json
+.env
+firebase-credentials.json
 src/*.pdf
 src/*.aux
 src/*.log
 src/*.out
-src/*.synctex.gz 
+src/*.synctex.gz

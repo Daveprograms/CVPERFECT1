@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/cover-letter/history`
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/cover-letter/history`
     const backendResponse = await fetch(backendUrl, {
       method: 'GET',
       headers: { Authorization: authHeader }

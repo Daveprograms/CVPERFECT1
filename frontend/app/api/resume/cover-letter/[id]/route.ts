@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
@@ -6,7 +8,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   console.log('📖 Fetching cover letter for resume:', params.id)
-  
+
   try {
     const cookieStore = cookies()
     const cookieToken = cookieStore.get('auth_token')?.value
@@ -14,18 +16,18 @@ export async function GET(
     const token = headerToken || cookieToken || ''
     const authHeader = token ? `Bearer ${token}` : ''
     console.log('🔐 Authorization header received:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NONE')
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       )
     }
-    
+
     // Call backend API to get latest generated cover letter for the resume
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/cover-letter/${params.id}`
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/cover-letter/${params.id}`
     console.log('🌐 Calling backend:', backendUrl)
-    
+
     const backendResponse = await fetch(backendUrl, {
       method: 'GET',
       headers: {
@@ -42,7 +44,7 @@ export async function GET(
     }
 
     const data = await backendResponse.json()
-    
+
     return NextResponse.json({
       id: data.id,
       resume_id: data.resume_id,
@@ -66,7 +68,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   console.log('📝 Cover letter API called for resume:', params.id)
-  
+
   try {
     const cookieStore = cookies()
     const cookieToken = cookieStore.get('auth_token')?.value
@@ -74,7 +76,7 @@ export async function POST(
     const token = headerToken || cookieToken || ''
     const body = await request.json()
     const { job_description } = body
-    
+
     if (!job_description) {
       return NextResponse.json(
         { error: 'Job description is required' },
@@ -85,18 +87,18 @@ export async function POST(
     // Get auth token from request headers
     const authHeader = token ? `Bearer ${token}` : ''
     console.log('🔐 Authorization header received:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NONE')
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       )
     }
-    
+
     // Call backend API
-          const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/cover-letter/${params.id}`
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/cover-letter/${params.id}`
     console.log('🌐 Calling backend:', backendUrl)
-    
+
     const backendResponse = await fetch(backendUrl, {
       method: 'POST',
       headers: {

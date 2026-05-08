@@ -5,12 +5,12 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   console.log('🧪 Practice exam GET API called for resume:', params.id)
-  
+
   try {
     // Get auth token from request headers
     const authHeader = request.headers.get('authorization') || ''
     console.log('🔐 Authorization header received:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NONE')
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('❌ Missing or invalid authorization header')
       return NextResponse.json(
@@ -18,11 +18,11 @@ export async function GET(
         { status: 401 }
       )
     }
-    
+
     // Call backend API to get resume with practice exam
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/${params.id}`
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/${params.id}`
     console.log('🌐 Calling backend:', backendUrl)
-    
+
     const backendResponse = await fetch(backendUrl, {
       method: 'GET',
       headers: {
@@ -40,7 +40,7 @@ export async function GET(
     }
 
     const resumeData = await backendResponse.json()
-    
+
     // Return the resume data with practice exam info
     return NextResponse.json({
       id: resumeData.id,
@@ -65,16 +65,16 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   console.log('🧪 Practice exam API called for resume:', params.id)
-  
+
   try {
     const body = await request.json()
     const { job_description } = body
-    
-    console.log('📝 Request body received:', { 
-      hasJobDescription: !!job_description, 
-      jobDescLength: job_description?.length || 0 
+
+    console.log('📝 Request body received:', {
+      hasJobDescription: !!job_description,
+      jobDescLength: job_description?.length || 0
     })
-    
+
     if (!job_description) {
       console.log('❌ Job description missing in request body')
       return NextResponse.json(
@@ -86,7 +86,7 @@ export async function POST(
     // Get auth token from request headers
     const authHeader = request.headers.get('authorization') || ''
     console.log('🔐 Authorization header received:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NONE')
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('❌ Missing or invalid authorization header')
       return NextResponse.json(
@@ -94,11 +94,11 @@ export async function POST(
         { status: 401 }
       )
     }
-    
+
     // Call backend API
-          const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/practice-exam/${params.id}`
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/practice-exam/${params.id}`
     console.log('🌐 Calling backend:', backendUrl)
-    
+
     const backendResponse = await fetch(backendUrl, {
       method: 'POST',
       headers: {

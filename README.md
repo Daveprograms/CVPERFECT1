@@ -1,14 +1,17 @@
 # CVPerfect 🎯
 
-An AI-powered resume enhancement platform built with **Next.js** (frontend) and **FastAPI** (backend), featuring Gemini AI integration, Stripe payments, and Firebase authentication.
+An AI-powered resume enhancement platform — **Next.js** frontend + **FastAPI** backend + **PostgreSQL**, all running with a single Docker Compose command.
 
 ---
 
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
-- [First-Time Setup](#first-time-setup)
-- [Starting the App](#starting-the-app)
+- [Quick Start (Docker)](#quick-start-docker)
+- [Configuring Secrets](#configuring-secrets)
+- [Daily Usage](#daily-usage)
+- [Accessing the App](#accessing-the-app)
+- [Manual Setup (no Docker)](#manual-setup-no-docker)
 - [Environment Variables Reference](#environment-variables-reference)
 - [Project Structure](#project-structure)
 - [Troubleshooting](#troubleshooting)
@@ -17,127 +20,122 @@ An AI-powered resume enhancement platform built with **Next.js** (frontend) and 
 
 ## Prerequisites
 
-Install the following tools **before** running any scripts:
-
 | Tool | Minimum Version | Download |
 |------|----------------|---------|
-| Python | 3.10+ | https://www.python.org/downloads/ |
-| Node.js | 18+ | https://nodejs.org/ |
-| Git | any | https://git-scm.com/ |
+| **Docker Desktop** | Latest | https://www.docker.com/products/docker-desktop/ |
+| **Git** | any | https://git-scm.com/ |
 
-> **Windows users:** When installing Python, make sure to check **"Add Python to PATH"** in the installer.
+> That's it. Docker Desktop bundles Docker Engine + Docker Compose together.  
+> You do **not** need Python or Node.js installed on your machine.
 
 ---
 
-## First-Time Setup
+## Quick Start (Docker)
 
-> Run this **once** after cloning the repository.
-
-### macOS / Linux
+### Step 1 — Clone the repo
 
 ```bash
-# 1. Clone the repository
 git clone <repository-url>
 cd CVPERFECT1
-
-# 2. Make scripts executable
-chmod +x setup.sh start.sh
-
-# 3. Run the setup script
-./setup.sh
 ```
 
-### Windows
-
-```bat
-REM 1. Clone the repository
-git clone <repository-url>
-cd CVPERFECT1
-
-REM 2. Run the setup script (double-click or run in Command Prompt)
-setup.bat
-```
-
-### What the setup script does
-
-- ✅ Checks that Python and Node.js are installed
-- ✅ Creates a Python virtual environment in `backend/venv/`
-- ✅ Installs all Python packages from `backend/requirements.txt`
-- ✅ Creates `backend/.env` from a template (if it doesn't exist)
-- ✅ Creates a placeholder `backend/firebase-credentials.json`
-- ✅ Installs all Node.js packages from `frontend/package.json`
-- ✅ Creates `frontend/.env.local` from a template (if it doesn't exist)
-
----
-
-## Configuring Secrets (Required)
-
-After running setup, **you must fill in your API keys** before the app will work.
-
-### 1. `backend/.env`
-
-Open `backend/.env` and replace every value that says `YOUR_*` or `CHANGE_ME_*`:
-
-```env
-# The most critical ones:
-GEMINI_API_KEY=          # Get from https://makersuite.google.com/app/apikey
-STRIPE_SECRET_KEY=       # Get from https://dashboard.stripe.com/apikeys
-NEXTAUTH_SECRET=         # Any long random string (run: openssl rand -hex 32)
-JWT_SECRET_KEY=          # Any long random string (run: openssl rand -hex 32)
-SECRET_KEY=              # Any long random string
-```
-
-### 2. `frontend/.env.local`
-
-Open `frontend/.env.local` and fill in the same Stripe keys plus your Firebase config:
-
-```env
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=   # From Stripe Dashboard
-NEXT_PUBLIC_FIREBASE_API_KEY=         # From Firebase Console > Project Settings
-NEXT_PUBLIC_FIREBASE_PROJECT_ID=      # Your Firebase project ID
-# ... (see the file for all fields)
-```
-
-### 3. `backend/firebase-credentials.json`
-
-Replace the placeholder with your real **Firebase Service Account** file:
-
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select your project → **Project Settings** → **Service Accounts**
-3. Click **Generate new private key**
-4. Rename the downloaded file to `firebase-credentials.json` and place it in the `backend/` folder
-
-> ⚠️ **Never commit this file to Git.** It is already listed in `.gitignore`.
-
----
-
-## Starting the App
-
-> Run this **every time** you want to start the application after the initial setup.
-
-### macOS / Linux
+### Step 2 — Create your `.env` file
 
 ```bash
-./start.sh
+# macOS / Linux
+cp .env.example .env
+
+# Windows (Command Prompt)
+copy .env.example .env
 ```
 
-The script will:
-1. Start the **FastAPI backend** on `http://localhost:8000`
-2. Wait until the backend is healthy
-3. Start the **Next.js frontend** on `http://localhost:3000`
-4. Print URLs to the console
+Open `.env` and fill in your API keys (see [Configuring Secrets](#configuring-secrets) below).
 
-Press **Ctrl+C** to stop both services cleanly.
+### Step 3 — Add Firebase credentials
 
-### Windows
+Place your Firebase service account JSON file at:
 
-```bat
-start.bat
+```
+backend/firebase-credentials.json
 ```
 
-The script will open **two terminal windows** — one for the backend, one for the frontend — and then open your browser automatically.
+> Get it from: **Firebase Console → Project Settings → Service Accounts → Generate new private key**
 
-To stop the app, **close both terminal windows**.
+### Step 4 — Build and start everything
+
+```bash
+docker compose up --build
+```
+
+This will:
+- Build the backend and frontend Docker images
+- Start a PostgreSQL database
+- Start the FastAPI backend (waits until DB is ready)
+- Start the Next.js frontend (waits until backend is healthy)
+
+The **first build** takes 3–5 minutes. Subsequent starts take ~10 seconds.
+
+---
+
+## Configuring Secrets
+
+Open `.env` (in the project root) and replace all `YOUR_*` / `CHANGE_ME_*` values:
+
+### Mandatory
+
+| Key | How to get it |
+|-----|--------------|
+| `NEXTAUTH_SECRET` | Run: `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `JWT_SECRET_KEY` | Same command above (use a different value) |
+| `SECRET_KEY` | Same command above (use a different value) |
+| `GEMINI_API_KEY` | https://makersuite.google.com/app/apikey |
+
+### Payments (Stripe) — skip if not using payments
+
+| Key | Where to find it |
+|-----|-----------------|
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Dashboard → Developers → API Keys |
+| `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API Keys |
+| `STRIPE_WEBHOOK_SECRET` | See tip at the bottom |
+
+### Firebase
+
+| Key | Where to find it |
+|-----|-----------------|
+| `NEXT_PUBLIC_FIREBASE_*` | Firebase Console → Project Settings → Your apps → Web app config |
+
+> **Generate secrets quickly:**
+> ```bash
+> # macOS / Linux
+> openssl rand -hex 32
+>
+> # Any platform (Python)
+> python -c "import secrets; print(secrets.token_hex(32))"
+> ```
+
+---
+
+## Daily Usage
+
+```bash
+# Start the app
+docker compose up
+
+# Start in the background (detached)
+docker compose up -d
+
+# View logs
+docker compose logs -f
+
+# Stop the app
+docker compose down
+
+# Stop and wipe the database (fresh start)
+docker compose down -v
+
+# Rebuild after code changes
+docker compose up --build
+```
 
 ---
 
@@ -152,36 +150,61 @@ To stop the app, **close both terminal windows**.
 
 ---
 
+## Manual Setup (no Docker)
+
+If you prefer to run without Docker, use the included shell scripts.
+
+### Prerequisites (manual setup only)
+
+| Tool | Minimum Version | Download |
+|------|----------------|---------|
+| Python | 3.10+ | https://www.python.org/downloads/ |
+| Node.js | 18+ | https://nodejs.org/ |
+
+### macOS / Linux
+
+```bash
+# First time only
+chmod +x setup.sh start.sh
+./setup.sh
+
+# Every time after
+./start.sh
+```
+
+### Windows
+
+```bat
+REM First time only
+setup.bat
+
+REM Every time after
+start.bat
+```
+
+After running the setup script, fill in:
+- `backend/.env` — all API keys
+- `frontend/.env.local` — Stripe + Firebase config
+- `backend/firebase-credentials.json` — real Firebase service account file
+
+---
+
 ## Environment Variables Reference
 
-### Backend (`backend/.env`)
+### Root `.env` (used by Docker Compose)
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL or SQLite connection string | ✅ |
-| `GEMINI_API_KEY` | Google Gemini AI API key | ✅ |
-| `STRIPE_SECRET_KEY` | Stripe secret key | For payments |
-| `STRIPE_PUBLISHABLE_KEY` | Stripe publishable key | For payments |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret | For payments |
-| `JWT_SECRET_KEY` | Secret for signing JWT tokens | ✅ |
+| `DATABASE_PASSWORD` | Password for the local PostgreSQL container | ✅ |
+| `NEXTAUTH_SECRET` | NextAuth signing secret | ✅ |
+| `JWT_SECRET_KEY` | JWT signing secret | ✅ |
 | `SECRET_KEY` | App secret key | ✅ |
-| `NEXTAUTH_SECRET` | NextAuth.js signing secret | ✅ |
-| `FIREBASE_CREDENTIALS_PATH` | Path to Firebase service account JSON | ✅ |
-| `FIREBASE_API_KEY` | Firebase Web API key | ✅ |
-| `SMTP_HOST` | Email SMTP host | For email features |
-| `SMTP_USER` | Email address | For email features |
-| `SMTP_PASSWORD` | Email app password | For email features |
-| `FRONTEND_URL` | Frontend base URL (default: `http://localhost:3000`) | ✅ |
-
-### Frontend (`frontend/.env.local`)
-
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Backend API URL (`http://localhost:8000`) |
-| `NEXTAUTH_URL` | NextAuth base URL (`http://localhost:3000`) |
-| `NEXTAUTH_SECRET` | **Must match** `backend/.env` value |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
-| `NEXT_PUBLIC_FIREBASE_*` | All Firebase config fields from Firebase Console |
+| `GEMINI_API_KEY` | Google Gemini AI key | ✅ |
+| `STRIPE_SECRET_KEY` | Stripe server-side key | Payments |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret | Payments |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe client-side key | Payments |
+| `NEXT_PUBLIC_FIREBASE_*` | Firebase web config fields | Auth |
+| `SMTP_*` | Email sending config | Email features |
 
 ---
 
@@ -189,93 +212,66 @@ To stop the app, **close both terminal windows**.
 
 ```
 CVPERFECT1/
-├── backend/               # FastAPI Python backend
+├── backend/                        # FastAPI Python backend
 │   ├── app/
-│   │   ├── main.py        # FastAPI app entry point
-│   │   ├── routers/       # API route handlers
-│   │   ├── models/        # SQLAlchemy database models
-│   │   ├── services/      # Business logic & AI services
-│   │   ├── core/
-│   │   │   └── config.py  # App configuration (reads .env)
-│   │   └── database.py    # DB connection & session
-│   ├── requirements.txt   # Python dependencies
-│   ├── .env               # ⚠️ Secret — NOT committed to git
-│   └── firebase-credentials.json  # ⚠️ Secret — NOT committed to git
+│   │   ├── main.py                 # App entry point
+│   │   ├── routers/                # API route handlers
+│   │   ├── models/                 # SQLAlchemy database models
+│   │   ├── services/               # Business logic & AI
+│   │   └── core/config.py          # Reads .env settings
+│   ├── Dockerfile                  # Backend container image
+│   ├── requirements.txt
+│   ├── .env                        # ⚠️ Not committed — secrets
+│   └── firebase-credentials.json   # ⚠️ Not committed — secrets
 │
-├── frontend/              # Next.js 14 frontend
-│   ├── app/               # Next.js App Router pages
-│   ├── components/        # Reusable React components
-│   ├── services/          # API client services
-│   ├── hooks/             # Custom React hooks
-│   ├── package.json       # Node.js dependencies
-│   └── .env.local         # ⚠️ Secret — NOT committed to git
+├── frontend/                       # Next.js 14 frontend
+│   ├── app/                        # Next.js App Router pages
+│   ├── components/
+│   ├── Dockerfile                  # Frontend container image
+│   ├── next.config.js
+│   └── package.json
 │
-├── setup.sh               # macOS/Linux first-time setup
-├── setup.bat              # Windows first-time setup
-├── start.sh               # macOS/Linux start script
-├── start.bat              # Windows start script
-└── README.md              # This file
+├── docker-compose.yml              # ← Run with this
+├── docker-compose.prod.yml         # Production compose (CI/CD)
+├── .env.example                    # Copy to .env and fill in
+├── setup.sh / setup.bat            # Manual setup scripts
+├── start.sh  / start.bat           # Manual start scripts
+└── README.md
 ```
 
 ---
 
 ## Troubleshooting
 
-### `uvicorn: command not found` (macOS/Linux)
-The venv may not have been activated. Try:
+### Docker build fails for frontend (`COPY --from=builder /app/.next/standalone`)
+The Next.js standalone build requires `output: 'standalone'` in `next.config.js`. This is already set — if you see this error, make sure you haven't accidentally reverted that config.
+
+### `Port 3000/8000 already in use`
+Stop whatever is using the port, then retry:
 ```bash
-cd backend
-source venv/bin/activate
-uvicorn app.main:app --reload
-```
-
-### `python` not recognized (Windows)
-Python was not added to PATH. Re-install Python and check **"Add Python to PATH"**, or use `python3` instead of `python`.
-
-### Port already in use
-Another process is using port 3000 or 8000. Kill it first:
-```bash
-# macOS/Linux — kill process on port 8000
-lsof -ti:8000 | xargs kill -9
-
-# macOS/Linux — kill process on port 3000
+# macOS / Linux
 lsof -ti:3000 | xargs kill -9
+lsof -ti:8000 | xargs kill -9
 ```
-
 ```bat
-REM Windows — kill process on port 8000
-netstat -ano | findstr :8000
+REM Windows
+netstat -ano | findstr :3000
 taskkill /PID <PID> /F
 ```
 
-### Database errors
-- For **SQLite** (default): the `cvperfect.db` file is created automatically in `backend/`.
-- For **PostgreSQL**: make sure your `DATABASE_URL` in `backend/.env` is correct and the database server is running.
+### Backend can't connect to database
+The backend waits for PostgreSQL to be healthy before starting. If it still fails, check that `DATABASE_PASSWORD` in `.env` matches what the `db` service uses. Try `docker compose logs db`.
 
-### Frontend can't connect to backend
-Make sure `NEXT_PUBLIC_API_URL=http://localhost:8000` is set in `frontend/.env.local` and the backend is running.
+### Frontend shows "Failed to fetch" errors
+The frontend talks to the backend via `http://localhost:8000`. Make sure both containers are running: `docker compose ps`.
 
 ### Firebase authentication errors
-Ensure `backend/firebase-credentials.json` contains your real service account credentials (not the placeholder), and that `FIREBASE_CREDENTIALS_PATH=./firebase-credentials.json` is set in `backend/.env`.
+Ensure `backend/firebase-credentials.json` is your **real** service account JSON (not the placeholder). The file must exist before running `docker compose up --build`.
 
 ---
 
-## Generating Secure Secrets
-
-Use these commands to generate strong random secrets:
-
-```bash
-# macOS / Linux
-openssl rand -hex 32
-
-# Python (any platform)
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
----
-
-> 💡 **Stripe Webhook (optional for local dev):** To test Stripe webhooks locally, install the [Stripe CLI](https://stripe.com/docs/stripe-cli) and run:
+> 💡 **Stripe Webhooks (local dev):** Install the [Stripe CLI](https://stripe.com/docs/stripe-cli) and run:
 > ```bash
 > stripe listen --forward-to localhost:8000/api/stripe/webhook
 > ```
-> The CLI will print a webhook signing secret — paste it into `STRIPE_WEBHOOK_SECRET` in `backend/.env`.
+> Copy the printed webhook secret into `STRIPE_WEBHOOK_SECRET` in `.env`, then restart with `docker compose up`.

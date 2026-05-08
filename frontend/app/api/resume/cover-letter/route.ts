@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Job description is required' }, { status: 400 })
     }
 
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/cover-letter/${resumeId}`
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/cover-letter/${resumeId}`
     const backendResponse = await fetch(backendUrl, {
       method: 'POST',
       headers: {
