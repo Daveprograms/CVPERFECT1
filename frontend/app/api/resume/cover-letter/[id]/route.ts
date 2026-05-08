@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
 export async function GET(
   request: NextRequest,
@@ -7,8 +8,11 @@ export async function GET(
   console.log('📖 Fetching cover letter for resume:', params.id)
   
   try {
-    // Get auth token from request headers
-    const authHeader = request.headers.get('authorization') || ''
+    const cookieStore = cookies()
+    const cookieToken = cookieStore.get('auth_token')?.value
+    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '') || ''
+    const token = headerToken || cookieToken || ''
+    const authHeader = token ? `Bearer ${token}` : ''
     console.log('🔐 Authorization header received:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NONE')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -18,8 +22,8 @@ export async function GET(
       )
     }
     
-    // Call backend API to get resume data
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/${params.id}`
+    // Call backend API to get latest generated cover letter for the resume
+    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'}/api/resume/cover-letter/${params.id}`
     console.log('🌐 Calling backend:', backendUrl)
     
     const backendResponse = await fetch(backendUrl, {
@@ -41,8 +45,9 @@ export async function GET(
     
     return NextResponse.json({
       id: data.id,
+      resume_id: data.resume_id,
       filename: data.filename,
-      original_content: data.original_content,
+      original_content: null,
       cover_letter: data.cover_letter,
       created_at: data.created_at
     })
@@ -63,6 +68,10 @@ export async function POST(
   console.log('📝 Cover letter API called for resume:', params.id)
   
   try {
+    const cookieStore = cookies()
+    const cookieToken = cookieStore.get('auth_token')?.value
+    const headerToken = request.headers.get('authorization')?.replace('Bearer ', '') || ''
+    const token = headerToken || cookieToken || ''
     const body = await request.json()
     const { job_description } = body
     
@@ -74,7 +83,7 @@ export async function POST(
     }
 
     // Get auth token from request headers
-    const authHeader = request.headers.get('authorization') || ''
+    const authHeader = token ? `Bearer ${token}` : ''
     console.log('🔐 Authorization header received:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NONE')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -106,14 +115,7 @@ export async function POST(
     }
 
     const data = await backendResponse.json()
-    
-    // Return just the cover letter text
-    return new NextResponse(data.cover_letter, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/plain',
-      },
-    })
+    return NextResponse.json(data)
 
   } catch (error) {
     console.error('Cover letter generation error:', error)

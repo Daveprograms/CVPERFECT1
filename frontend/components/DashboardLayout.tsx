@@ -71,6 +71,12 @@ const navigationGroups = [
         href: '/cover-letters',
         icon: Mail,
         description: 'Generate tailored cover letters'
+      },
+      {
+        name: 'Generate Resume',
+        href: '/resume-generator',
+        icon: FileText,
+        description: 'Build resumes with guided templates'
       }
     ]
   },

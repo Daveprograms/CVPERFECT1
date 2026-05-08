@@ -7,6 +7,7 @@ Ensures production always uses real data
 import logging
 from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from ..core.config import settings
 from ..models.user import User
 from ..models.resume import Resume, ResumeAnalysis
@@ -90,7 +91,7 @@ class RealDataService:
                 
                 # Get real average score
                 avg_score_result = self.db.query(
-                    self.db.func.avg(ResumeAnalysis.overall_score)
+                    func.avg(ResumeAnalysis.overall_score)
                 ).join(Resume).filter(
                     Resume.user_id == user_id
                 ).scalar()

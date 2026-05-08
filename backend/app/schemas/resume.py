@@ -50,10 +50,16 @@ class ResumeScoreResponse(BaseModel):
 
 class CoverLetterRequest(BaseModel):
     job_description: str
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
     company_info: Optional[Dict[str, Any]] = None
 
 class CoverLetterResponse(BaseModel):
     cover_letter: str
+
+
+class CoverLetterUpdateRequest(BaseModel):
+    content: str
 
 
 
@@ -69,3 +75,58 @@ class LearningPathResponse(BaseModel):
     resources: List[Dict[str, Any]]
     timeline: Dict[str, Any]
     milestones: List[Dict[str, Any]] 
+
+
+class GeneratedResumeTemplateResponse(BaseModel):
+    id: UUID
+    key: str
+    label: str
+    description: Optional[str] = None
+    preview_meta: Dict[str, Any] = {}
+    sort_order: int
+
+    class Config:
+        from_attributes = True
+
+
+class GeneratedResumeCreateRequest(BaseModel):
+    title: Optional[str] = "Untitled Generated Resume"
+    template_key: Optional[str] = None
+    resume_data: Dict[str, Any] = {}
+    quick_import_input: Optional[str] = None
+
+
+class GeneratedResumeUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    template_key: Optional[str] = None
+    resume_data: Optional[Dict[str, Any]] = None
+    quick_import_input: Optional[str] = None
+    status: Optional[str] = None
+
+
+class GeneratedResumeSummaryRequest(BaseModel):
+    current_role: Optional[str] = None
+    years_experience: Optional[str] = None
+    specialization: Optional[str] = None
+    highlights: List[str] = []
+    target_role: Optional[str] = None
+    target_company_type: Optional[str] = None
+
+
+class GeneratedResumeAIGenerateRequest(BaseModel):
+    quick_import_input: Optional[str] = None
+    target_role: Optional[str] = None
+    target_company_type: Optional[str] = None
+    job_description: Optional[str] = None
+
+
+class GeneratedResumeResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    template_key: Optional[str] = None
+    title: str
+    status: str
+    resume_data: Dict[str, Any]
+    quick_import_input: Optional[str] = None
+    created_at: datetime
+    updated_at: Optional[datetime] = None

@@ -1,5 +1,12 @@
 from .user import User, SubscriptionType
-from .resume import Resume, ResumeVersion, ResumeAnalysis
+from .resume import (
+    Resume,
+    ResumeVersion,
+    ResumeAnalysis,
+    CoverLetterHistory,
+    GeneratedResume,
+    GeneratedResumeTemplate,
+)
 from .analytics import Analytics, ActionType
 
 __all__ = [
@@ -8,6 +15,9 @@ __all__ = [
     'Resume',
     'ResumeVersion',
     'ResumeAnalysis',
+    'CoverLetterHistory',
+    'GeneratedResume',
+    'GeneratedResumeTemplate',
     'Analytics',
     'ActionType'
 ] 

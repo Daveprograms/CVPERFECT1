@@ -85,8 +85,13 @@ class GeminiService:
             - 3-4 paragraphs maximum
             - Include specific examples and achievements
             - Customize for the company and role
+            - Use the candidate's real name and contact details from the resume when available
+            - Do not use placeholders like [Your Name], [Your Address], [Company Name], or similar
+            - Do not add a house or street address block at the top of the letter
+            - Do not invent personal details that are not present in the resume
+            - Start with a simple professional greeting and the body of the letter
             
-            Generate a complete cover letter without any placeholders.
+            Generate a complete cover letter without any placeholders or mailing-address header.
             """
             
             response = self.client.models.generate_content(model=self.model, contents=cover_letter_prompt)

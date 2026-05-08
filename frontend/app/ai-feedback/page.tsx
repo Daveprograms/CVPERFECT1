@@ -32,43 +32,57 @@ export default function AIAnalysisPage() {
   const router = useRouter()
   const [resumes, setResumes] = useState<ResumeItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Demo data for AI Analysis page
-    const demoResumes: ResumeItem[] = [
-      {
-        id: 'res_001',
-        filename: 'Senior_Developer_Resume.pdf',
-        score: 85,
-        ats_score: 92,
-        analysis_count: 3,
-        created_at: '2024-01-15T10:30:00Z',
-        updated_at: '2024-01-20T14:45:00Z'
-      },
-      {
-        id: 'res_002',
-        filename: 'Frontend_Developer_Resume.pdf',
-        score: 78,
-        ats_score: 88,
-        analysis_count: 2,
-        created_at: '2024-01-10T09:15:00Z',
-        updated_at: '2024-01-18T11:20:00Z'
-      },
-      {
-        id: 'res_003',
-        filename: 'Full_Stack_Resume.pdf',
-        score: 91,
-        ats_score: 95,
-        analysis_count: 4,
-        created_at: '2024-01-05T16:20:00Z',
-        updated_at: '2024-01-22T13:30:00Z'
-      }
-    ]
+    const fetchResumes = async () => {
+      try {
+        setIsLoading(true)
+        const token = localStorage.getItem('auth_token')
+        
+        // Fetch resume history which includes scores and analysis data
+        const response = await fetch('/api/resume/history', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        })
 
-    setTimeout(() => {
-      setResumes(demoResumes)
-      setIsLoading(false)
-    }, 1000)
+        if (!response.ok) {
+          throw new Error('Failed to fetch resume history')
+        }
+
+        const data = await response.json()
+        
+        // Transform the data to match ResumeItem interface
+        const resumeHistory = Array.isArray(data) ? data : data.feedback_history || data.resumes || []
+        
+        if (resumeHistory.length > 0) {
+          const transformedResumes: ResumeItem[] = resumeHistory.map((item: any) => ({
+            id: item.id || item.resume_id || 'unknown',
+            filename: item.filename || item.name || 'Resume',
+            score: item.score || item.resume_score || 0,
+            ats_score: item.ats_score || item.ats_compatibility || 0,
+            analysis_count: item.analysis_count || item.feedback_count || 0,
+            created_at: item.created_at || new Date().toISOString(),
+            updated_at: item.updated_at || new Date().toISOString(),
+          }))
+          setResumes(transformedResumes)
+        } else {
+          setResumes([])
+        }
+        
+        setError(null)
+      } catch (err) {
+        console.error('Error fetching resumes:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load resumes')
+        setResumes([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchResumes()
   }, [])
 
   const getScoreColor = (score: number) => {
@@ -105,6 +119,21 @@ export default function AIAnalysisPage() {
     )
   }
 
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
+            <p className="text-lg font-semibold text-foreground mb-2">Error Loading Resumes</p>
+            <p className="text-muted-foreground mb-6">{error}</p>
+            <Button onClick={() => window.location.reload()}>Try Again</Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
@@ -129,50 +158,52 @@ export default function AIAnalysisPage() {
         </motion.div>
 
         {/* Stats Overview */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-6"
-        >
-          <Card className="p-6">
-            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
-              <FileText className="w-6 h-6 text-primary" />
-            </div>
-            <h3 className="font-medium text-foreground mb-1 text-center">Total Resumes</h3>
-            <p className="text-2xl font-bold text-primary text-center">{resumes.length}</p>
-          </Card>
+        {resumes.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-1 md:grid-cols-4 gap-6"
+          >
+            <Card className="p-6">
+              <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <FileText className="w-6 h-6 text-primary" />
+              </div>
+              <h3 className="font-medium text-foreground mb-1 text-center">Total Resumes</h3>
+              <p className="text-2xl font-bold text-primary text-center">{resumes.length}</p>
+            </Card>
 
-          <Card className="p-6">
-            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mx-auto mb-3">
-              <Star className="w-6 h-6 text-green-600" />
-            </div>
-            <h3 className="font-medium text-foreground mb-1 text-center">Avg Score</h3>
-            <p className="text-2xl font-bold text-green-600 text-center">
-              {Math.round(resumes.reduce((acc, res) => acc + res.score, 0) / resumes.length)}%
-            </p>
-          </Card>
+            <Card className="p-6">
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <Star className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="font-medium text-foreground mb-1 text-center">Avg Score</h3>
+              <p className="text-2xl font-bold text-green-600 text-center">
+                {resumes.length > 0 ? Math.round(resumes.reduce((acc, res) => acc + res.score, 0) / resumes.length) : 0}%
+              </p>
+            </Card>
 
-          <Card className="p-6">
-            <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mx-auto mb-3">
-              <TrendingUp className="w-6 h-6 text-purple-600" />
-            </div>
-            <h3 className="font-medium text-foreground mb-1 text-center">Avg ATS Score</h3>
-            <p className="text-2xl font-bold text-purple-600 text-center">
-              {Math.round(resumes.reduce((acc, res) => acc + res.ats_score, 0) / resumes.length)}%
-            </p>
-          </Card>
+            <Card className="p-6">
+              <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <TrendingUp className="w-6 h-6 text-purple-600" />
+              </div>
+              <h3 className="font-medium text-foreground mb-1 text-center">Avg ATS Score</h3>
+              <p className="text-2xl font-bold text-purple-600 text-center">
+                {resumes.length > 0 ? Math.round(resumes.reduce((acc, res) => acc + res.ats_score, 0) / resumes.length) : 0}%
+              </p>
+            </Card>
 
-          <Card className="p-6">
-            <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center mx-auto mb-3">
-              <Brain className="w-6 h-6 text-orange-600" />
-            </div>
-            <h3 className="font-medium text-foreground mb-1 text-center">Total Analyses</h3>
-            <p className="text-2xl font-bold text-orange-600 text-center">
-              {resumes.reduce((acc, res) => acc + res.analysis_count, 0)}
-            </p>
-          </Card>
-        </motion.div>
+            <Card className="p-6">
+              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/20 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <Brain className="w-6 h-6 text-orange-600" />
+              </div>
+              <h3 className="font-medium text-foreground mb-1 text-center">Total Analyses</h3>
+              <p className="text-2xl font-bold text-orange-600 text-center">
+                {resumes.reduce((acc, res) => acc + res.analysis_count, 0)}
+              </p>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Resumes List */}
         <motion.div
@@ -181,33 +212,47 @@ export default function AIAnalysisPage() {
           transition={{ delay: 0.2 }}
         >
           <h2 className="text-xl font-semibold mb-6">📄 Available Resumes for Analysis</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {resumes.map((resume, index) => (
-              <Card key={resume.id} className="p-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-medium text-foreground truncate">{resume.filename}</h3>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(resume.score)} bg-opacity-20 border border-current`}>
-                    {formatScore(resume.score)}
-                  </span>
-                </div>
-                <div className="space-y-2 text-sm text-muted-foreground mb-4">
-                  <p>🎯 ATS: <span className={`font-medium ${getScoreColor(resume.ats_score)}`}>{formatScore(resume.ats_score)}</span></p>
-                  <p>📊 Analyses: {resume.analysis_count}</p>
-                  <p>📅 Updated: {formatDate(resume.updated_at)}</p>
-                </div>
-                <div className="flex space-x-2">
-                  <Button size="sm" variant="outline" onClick={() => handleAnalyzeResume(resume.id)}>
-                    <Brain className="w-4 h-4 mr-1" />
-                    Analyze
-                  </Button>
-                  <Button size="sm" variant="outline">
-                    <Eye className="w-4 h-4 mr-1" />
-                    View
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
+          {resumes.length === 0 ? (
+            <Card className="p-12">
+              <div className="text-center">
+                <FileText className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No Resumes Yet</h3>
+                <p className="text-muted-foreground mb-6">Upload your first resume to get started with AI-powered feedback.</p>
+                <Button onClick={handleUploadResume}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload Resume
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {resumes.map((resume, index) => (
+                <Card key={resume.id} className="p-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium text-foreground truncate">{resume.filename}</h3>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getScoreColor(resume.score)} bg-opacity-20 border border-current`}>
+                      {formatScore(resume.score)}
+                    </span>
+                  </div>
+                  <div className="space-y-2 text-sm text-muted-foreground mb-4">
+                    <p>🎯 ATS: <span className={`font-medium ${getScoreColor(resume.ats_score)}`}>{formatScore(resume.ats_score)}</span></p>
+                    <p>📊 Analyses: {resume.analysis_count}</p>
+                    <p>📅 Updated: {formatDate(resume.updated_at)}</p>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button size="sm" variant="outline" onClick={() => handleAnalyzeResume(resume.id)}>
+                      <Brain className="w-4 h-4 mr-1" />
+                      Analyze
+                    </Button>
+                    <Button size="sm" variant="outline">
+                      <Eye className="w-4 h-4 mr-1" />
+                      View
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Quick Actions */}

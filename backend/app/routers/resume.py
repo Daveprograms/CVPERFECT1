@@ -22,7 +22,15 @@ from sqlalchemy.orm import relationship
 
 from ..database import get_db
 from ..models.user import User, SubscriptionType
-from ..models.resume import Resume, ResumeVersion, ResumeAnalysis, ResumeAnalysisRequest
+from ..models.resume import (
+    Resume,
+    ResumeVersion,
+    ResumeAnalysis,
+    ResumeAnalysisRequest,
+    CoverLetterHistory,
+    GeneratedResume,
+    GeneratedResumeTemplate,
+)
 from ..models.analytics import Analytics, ActionType
 from ..schemas.resume import (
     ResumeCreate,
@@ -31,7 +39,13 @@ from ..schemas.resume import (
     ResumeScoreResponse,
     CoverLetterRequest,
     CoverLetterResponse,
-    LearningPathResponse
+    CoverLetterUpdateRequest,
+    LearningPathResponse,
+    GeneratedResumeTemplateResponse,
+    GeneratedResumeCreateRequest,
+    GeneratedResumeUpdateRequest,
+    GeneratedResumeSummaryRequest,
+    GeneratedResumeAIGenerateRequest,
 )
 from ..services.gemini_service import (
     gemini_service,
@@ -46,6 +60,427 @@ from logging import getLogger
 logger = getLogger(__name__)
 
 router = APIRouter()
+
+
+def _default_generated_resume_templates() -> List[Dict[str, Any]]:
+    return [
+        {
+            "key": "classic",
+            "label": "Classic",
+            "description": "Serif · Traditional · ATS-safe",
+            "sort_order": 1,
+            "preview_meta": {"theme": "classic", "ats_safe": True},
+        },
+        {
+            "key": "sidebar",
+            "label": "Sidebar",
+            "description": "Two-column · Navy sidebar · Tech",
+            "sort_order": 2,
+            "preview_meta": {"theme": "sidebar", "ats_safe": False},
+        },
+        {
+            "key": "modern",
+            "label": "Modern",
+            "description": "Dark header · Orange accent · Bold",
+            "sort_order": 3,
+            "preview_meta": {"theme": "modern", "ats_safe": True},
+        },
+        {
+            "key": "executive",
+            "label": "Executive",
+            "description": "Navy & gold · Prestige · Senior",
+            "sort_order": 4,
+            "preview_meta": {"theme": "executive", "ats_safe": True},
+        },
+        {
+            "key": "minimal",
+            "label": "Minimal",
+            "description": "Ultra-clean · Light weight · Creative",
+            "sort_order": 5,
+            "preview_meta": {"theme": "minimal", "ats_safe": True},
+        },
+    ]
+
+
+def _ensure_generated_templates(db: Session) -> None:
+    existing_keys = {
+        row[0]
+        for row in db.query(GeneratedResumeTemplate.key).all()
+    }
+
+    for template in _default_generated_resume_templates():
+        if template["key"] in existing_keys:
+            continue
+        db.add(
+            GeneratedResumeTemplate(
+                key=template["key"],
+                label=template["label"],
+                description=template["description"],
+                sort_order=template["sort_order"],
+                preview_meta=template["preview_meta"],
+                is_active=True,
+            )
+        )
+    db.commit()
+
+
+def _normalize_resume_data(resume_data: Dict[str, Any]) -> Dict[str, Any]:
+    default_payload = {
+        "personal_info": {},
+        "summary_inputs": {},
+        "summary": "",
+        "experience": [],
+        "education": [],
+        "skills": [],
+        "certifications": [],
+        "languages": [],
+    }
+    if not isinstance(resume_data, dict):
+        return default_payload
+    normalized = {**default_payload, **resume_data}
+    if not isinstance(normalized.get("experience"), list):
+        normalized["experience"] = []
+    if not isinstance(normalized.get("education"), list):
+        normalized["education"] = []
+    if not isinstance(normalized.get("skills"), list):
+        normalized["skills"] = []
+    if not isinstance(normalized.get("certifications"), list):
+        normalized["certifications"] = []
+    if not isinstance(normalized.get("languages"), list):
+        normalized["languages"] = []
+    return normalized
+
+
+def _build_generated_resume_response(item: GeneratedResume) -> Dict[str, Any]:
+    template_key = item.template.key if item.template else None
+    return {
+        "id": str(item.id),
+        "user_id": str(item.user_id),
+        "template_key": template_key,
+        "title": item.title,
+        "status": item.status,
+        "resume_data": _normalize_resume_data(item.resume_data or {}),
+        "quick_import_input": item.quick_import_input,
+        "created_at": item.created_at,
+        "updated_at": item.updated_at,
+    }
+
+
+def _is_paid_subscription(subscription: SubscriptionType) -> bool:
+    return subscription in {
+        SubscriptionType.PROFESSIONAL,
+        SubscriptionType.ENTERPRISE,
+    }
+
+
+def _build_rule_based_summary(payload: GeneratedResumeSummaryRequest) -> str:
+    role = payload.current_role or "professional"
+    years = payload.years_experience or "several"
+    specialization = payload.specialization or "cross-functional delivery"
+    highlights = [h.strip() for h in payload.highlights if h and h.strip()]
+    highlight_text = " ".join(highlights[:2]) if highlights else "Proven track record of shipping measurable outcomes."
+    target_role = payload.target_role or "the next role"
+    target_company_type = payload.target_company_type or "growth-oriented teams"
+
+    return (
+        f"{role} with {years} years of experience in {specialization}. "
+        f"{highlight_text} "
+        f"Currently targeting {target_role} opportunities at {target_company_type}."
+    )
+
+
+def _extract_json_object(raw_text: str) -> Dict[str, Any]:
+    text = (raw_text or "").strip()
+    if not text:
+        return {}
+
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    fence_start = text.find("```")
+    if fence_start != -1:
+        fence_end = text.rfind("```")
+        if fence_end > fence_start:
+            fenced = text[fence_start + 3:fence_end].strip()
+            if fenced.startswith("json"):
+                fenced = fenced[4:].strip()
+            try:
+                return json.loads(fenced)
+            except Exception:
+                pass
+
+    first = text.find("{")
+    last = text.rfind("}")
+    if first != -1 and last != -1 and last > first:
+        possible = text[first:last + 1]
+        try:
+            return json.loads(possible)
+        except Exception:
+            return {}
+
+    return {}
+
+
+@router.get("/generated/templates")
+async def list_generated_resume_templates(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _ensure_generated_templates(db)
+    templates = db.query(GeneratedResumeTemplate).filter(
+        GeneratedResumeTemplate.is_active == True
+    ).order_by(GeneratedResumeTemplate.sort_order.asc()).all()
+
+    return [
+        {
+            "id": str(t.id),
+            "key": t.key,
+            "label": t.label,
+            "description": t.description,
+            "preview_meta": t.preview_meta or {},
+            "sort_order": t.sort_order,
+        }
+        for t in templates
+    ]
+
+
+@router.get("/generated")
+async def list_generated_resumes(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _ensure_generated_templates(db)
+    items = db.query(GeneratedResume).filter(
+        GeneratedResume.user_id == current_user.id
+    ).order_by(GeneratedResume.created_at.desc()).all()
+    return [_build_generated_resume_response(item) for item in items]
+
+
+@router.post("/generated")
+async def create_generated_resume(
+    request: GeneratedResumeCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _ensure_generated_templates(db)
+    template = None
+    if request.template_key:
+        template = db.query(GeneratedResumeTemplate).filter(
+            GeneratedResumeTemplate.key == request.template_key,
+            GeneratedResumeTemplate.is_active == True,
+        ).first()
+        if not template:
+            raise HTTPException(status_code=400, detail="Invalid template key")
+
+    item = GeneratedResume(
+        user_id=current_user.id,
+        template_id=template.id if template else None,
+        title=(request.title or "Untitled Generated Resume").strip() or "Untitled Generated Resume",
+        status="draft",
+        resume_data=_normalize_resume_data(request.resume_data),
+        quick_import_input=request.quick_import_input,
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return _build_generated_resume_response(item)
+
+
+@router.get("/generated/{generated_resume_id}")
+async def get_generated_resume(
+    generated_resume_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    item = db.query(GeneratedResume).filter(
+        GeneratedResume.id == generated_resume_id,
+        GeneratedResume.user_id == current_user.id,
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Generated resume not found")
+    return _build_generated_resume_response(item)
+
+
+@router.put("/generated/{generated_resume_id}")
+async def update_generated_resume(
+    generated_resume_id: str,
+    request: GeneratedResumeUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    item = db.query(GeneratedResume).filter(
+        GeneratedResume.id == generated_resume_id,
+        GeneratedResume.user_id == current_user.id,
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Generated resume not found")
+
+    if request.template_key is not None:
+        template = db.query(GeneratedResumeTemplate).filter(
+            GeneratedResumeTemplate.key == request.template_key,
+            GeneratedResumeTemplate.is_active == True,
+        ).first()
+        if not template:
+            raise HTTPException(status_code=400, detail="Invalid template key")
+        item.template_id = template.id
+
+    if request.title is not None:
+        title = request.title.strip()
+        item.title = title or item.title
+
+    if request.resume_data is not None:
+        item.resume_data = _normalize_resume_data(request.resume_data)
+
+    if request.quick_import_input is not None:
+        item.quick_import_input = request.quick_import_input
+
+    if request.status is not None:
+        item.status = request.status
+
+    db.commit()
+    db.refresh(item)
+    return _build_generated_resume_response(item)
+
+
+@router.delete("/generated/{generated_resume_id}")
+async def delete_generated_resume(
+    generated_resume_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    item = db.query(GeneratedResume).filter(
+        GeneratedResume.id == generated_resume_id,
+        GeneratedResume.user_id == current_user.id,
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Generated resume not found")
+
+    db.delete(item)
+    db.commit()
+    return {"success": True}
+
+
+@router.post("/generated/{generated_resume_id}/summary")
+async def generate_generated_resume_summary(
+    generated_resume_id: str,
+    request: GeneratedResumeSummaryRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    item = db.query(GeneratedResume).filter(
+        GeneratedResume.id == generated_resume_id,
+        GeneratedResume.user_id == current_user.id,
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Generated resume not found")
+
+    if _is_paid_subscription(current_user.subscription_type):
+        prompt = (
+            "Write a concise professional resume summary (2-4 sentences).\n"
+            f"Current role: {request.current_role or ''}\n"
+            f"Years of experience: {request.years_experience or ''}\n"
+            f"Specialization: {request.specialization or ''}\n"
+            f"Highlights: {'; '.join(request.highlights)}\n"
+            f"Target role: {request.target_role or ''}\n"
+            f"Target company type: {request.target_company_type or ''}\n"
+            "Return plain text only."
+        )
+        try:
+            from ..services.gemini_service import GeminiService
+
+            gemini_svc = GeminiService()
+            response = gemini_svc.client.models.generate_content(model=gemini_svc.model, contents=prompt)
+            summary = (response.text or "").strip()
+            if not summary:
+                summary = _build_rule_based_summary(request)
+            generation_mode = "ai"
+        except Exception:
+            summary = _build_rule_based_summary(request)
+            generation_mode = "rule_based_fallback"
+    else:
+        summary = _build_rule_based_summary(request)
+        generation_mode = "rule_based"
+
+    data = _normalize_resume_data(item.resume_data or {})
+    data["summary_inputs"] = request.dict()
+    data["summary"] = summary
+    item.resume_data = data
+    db.commit()
+    db.refresh(item)
+
+    return {
+        "summary": summary,
+        "generation_mode": generation_mode,
+        "generated_resume": _build_generated_resume_response(item),
+    }
+
+
+@router.post("/generated/{generated_resume_id}/ai-generate")
+async def ai_generate_generated_resume(
+    generated_resume_id: str,
+    request: GeneratedResumeAIGenerateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    item = db.query(GeneratedResume).filter(
+        GeneratedResume.id == generated_resume_id,
+        GeneratedResume.user_id == current_user.id,
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Generated resume not found")
+
+    if not _is_paid_subscription(current_user.subscription_type):
+        raise HTTPException(status_code=403, detail="AI resume generation is available on Pro and Enterprise plans")
+
+    seed = _normalize_resume_data(item.resume_data or {})
+    import_text = request.quick_import_input or item.quick_import_input or ""
+    target_role = request.target_role or seed.get("summary_inputs", {}).get("target_role", "")
+    target_company_type = request.target_company_type or seed.get("summary_inputs", {}).get("target_company_type", "")
+
+    prompt = (
+        "You are a resume writing assistant. Return valid JSON only. No markdown.\n"
+        "Use this exact schema with all keys present:\n"
+        "{\n"
+        "  \"personal_info\": {\"full_name\":\"\",\"target_title\":\"\",\"email\":\"\",\"phone\":\"\",\"location\":\"\",\"linkedin_url\":\"\",\"website\":\"\"},\n"
+        "  \"summary_inputs\": {\"current_role\":\"\",\"years_experience\":\"\",\"specialization\":\"\",\"highlights\":[],\"target_role\":\"\",\"target_company_type\":\"\"},\n"
+        "  \"summary\":\"\",\n"
+        "  \"experience\":[{\"job_title\":\"\",\"company\":\"\",\"dates\":\"\",\"responsibilities\":\"\",\"achievements\":\"\",\"led_team\":\"\"}],\n"
+        "  \"education\":[{\"degree\":\"\",\"institution\":\"\",\"graduation_year\":\"\",\"details\":\"\"}],\n"
+        "  \"skills\":[],\n"
+        "  \"certifications\":[{\"name\":\"\",\"year\":\"\"}],\n"
+        "  \"languages\":[{\"name\":\"\",\"level\":\"Fluent\"}]\n"
+        "}\n"
+        "Improve bullet specificity and include measurable impact where possible.\n"
+        f"Target role: {target_role}\n"
+        f"Target company type: {target_company_type}\n"
+        f"Job description: {request.job_description or ''}\n"
+        f"Current JSON seed: {json.dumps(seed)}\n"
+        f"Imported resume text and notes: {import_text}\n"
+    )
+
+    try:
+        from ..services.gemini_service import GeminiService
+
+        gemini_svc = GeminiService()
+        response = gemini_svc.client.models.generate_content(model=gemini_svc.model, contents=prompt)
+        payload = _extract_json_object(response.text or "")
+        generated_data = _normalize_resume_data(payload)
+    except Exception as e:
+        logger.error(f"AI generated resume failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="AI resume generation failed")
+
+    item.resume_data = generated_data
+    item.quick_import_input = import_text or item.quick_import_input
+    item.status = "draft"
+    db.commit()
+    db.refresh(item)
+
+    return {
+        "generation_mode": "ai",
+        "generated_resume": _build_generated_resume_response(item),
+    }
 
 @router.post("/upload")
 async def upload_resume(
@@ -284,6 +719,109 @@ async def enhance_resume(
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/cover-letter/history")
+async def list_cover_letter_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    entries = db.query(CoverLetterHistory, Resume.filename).join(
+        Resume, Resume.id == CoverLetterHistory.resume_id
+    ).filter(
+        CoverLetterHistory.user_id == current_user.id
+    ).order_by(desc(CoverLetterHistory.created_at)).all()
+
+    return [
+        {
+            "id": str(entry.id),
+            "resume_id": str(entry.resume_id),
+            "filename": filename,
+            "job_title": entry.job_title,
+            "company_name": entry.company_name,
+            "content": entry.content,
+            "created_at": entry.created_at,
+        }
+        for entry, filename in entries
+    ]
+
+@router.put("/cover-letter/history/{cover_letter_id}")
+async def update_cover_letter_history_item(
+    cover_letter_id: str,
+    request: CoverLetterUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    entry = db.query(CoverLetterHistory).filter(
+        CoverLetterHistory.id == cover_letter_id,
+        CoverLetterHistory.user_id == current_user.id
+    ).first()
+
+    if not entry:
+        raise HTTPException(status_code=404, detail="Cover letter not found")
+
+    entry.content = request.content
+    db.commit()
+    db.refresh(entry)
+
+    filename = db.query(Resume.filename).filter(Resume.id == entry.resume_id).scalar()
+    return {
+        "id": str(entry.id),
+        "resume_id": str(entry.resume_id),
+        "filename": filename,
+        "job_title": entry.job_title,
+        "company_name": entry.company_name,
+        "content": entry.content,
+        "created_at": entry.created_at,
+    }
+
+@router.delete("/cover-letter/history/{cover_letter_id}")
+async def delete_cover_letter_history_item(
+    cover_letter_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    entry = db.query(CoverLetterHistory).filter(
+        CoverLetterHistory.id == cover_letter_id,
+        CoverLetterHistory.user_id == current_user.id
+    ).first()
+
+    if not entry:
+        raise HTTPException(status_code=404, detail="Cover letter not found")
+
+    db.delete(entry)
+    db.commit()
+    return {"success": True}
+
+@router.get("/cover-letter/{resume_id}")
+async def get_cover_letter(
+    resume_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    entry = db.query(CoverLetterHistory).filter(
+        CoverLetterHistory.resume_id == resume.id,
+        CoverLetterHistory.user_id == current_user.id
+    ).order_by(desc(CoverLetterHistory.created_at)).first()
+
+    if not entry:
+        raise HTTPException(status_code=404, detail="Cover letter not found")
+
+    return {
+        "id": str(entry.id),
+        "resume_id": str(resume.id),
+        "filename": resume.filename,
+        "job_title": entry.job_title,
+        "company_name": entry.company_name,
+        "cover_letter": entry.content,
+        "created_at": entry.created_at,
+    }
+
 @router.post("/cover-letter/{resume_id}")
 async def generate_cover_letter(
     resume_id: str,
@@ -307,24 +845,36 @@ async def generate_cover_letter(
     try:
         print("🤖 Calling Gemini API to generate cover letter...")
         # Generate cover letter using the text content
-        resume_text_content = resume.content or resume.enhanced_content or resume.original_content
+        resume_text_content = resume.content
         print(f"📄 Using resume content: {len(resume_text_content) if resume_text_content else 0} characters")
         
         if not resume_text_content:
             raise HTTPException(status_code=400, detail="Resume content not available for cover letter generation")
+
+        company_info = request.company_info or {}
+        job_title = request.job_title or company_info.get("job_title") or company_info.get("role")
+        company_name = request.company_name or company_info.get("company_name") or company_info.get("company")
         
         cover_letter = await gemini_service.generate_cover_letter(
             resume_text_content,
             request.job_description,
-            request.job_title,
-            request.company_name
+            job_title,
+            company_name
         )
         
         print(f"✅ Cover letter generated successfully (length: {len(cover_letter)} chars)")
 
-        # Update resume
-        resume.cover_letter = cover_letter
+        cover_letter_entry = CoverLetterHistory(
+            user_id=current_user.id,
+            resume_id=resume.id,
+            job_title=job_title,
+            company_name=company_name,
+            job_description=request.job_description,
+            content=cover_letter,
+        )
+        db.add(cover_letter_entry)
         db.commit()
+        db.refresh(cover_letter_entry)
 
         # Track analytics
         analytics = Analytics(
@@ -338,7 +888,15 @@ async def generate_cover_letter(
         db.add(analytics)
         db.commit()
 
-        return {"cover_letter": cover_letter}
+        return {
+            "id": str(cover_letter_entry.id),
+            "resume_id": str(resume.id),
+            "filename": resume.filename,
+            "job_title": job_title,
+            "company_name": company_name,
+            "cover_letter": cover_letter,
+            "created_at": cover_letter_entry.created_at,
+        }
 
     except Exception as e:
         print(f"❌ Cover letter generation failed: {str(e)}")

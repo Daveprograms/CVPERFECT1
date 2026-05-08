@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
 
 export function CleanDashboard() {
-  const { userProfile, onboardingStatus, latestResume, dashboardStats, isLoading } = useDashboard();
+  const { userProfile, onboardingStatus, latestResume, dashboardStats, isLoading, hasError } = useDashboard();
 
   if (isLoading) {
     return (
@@ -17,6 +17,24 @@ export function CleanDashboard() {
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-lg font-medium text-muted-foreground">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasError) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="text-4xl mb-4">⚠️</div>
+          <p className="text-lg font-medium text-muted-foreground mb-4">Unable to load dashboard</p>
+          <p className="text-sm text-muted-foreground mb-6">Please refresh the page or try again later</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90"
+          >
+            Refresh Page
+          </button>
         </div>
       </div>
     );
