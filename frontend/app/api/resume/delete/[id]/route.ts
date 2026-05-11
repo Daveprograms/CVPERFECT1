@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerAuthHeader } from '@/lib/server-auth'
 
 export async function DELETE(
   request: NextRequest,
@@ -7,12 +8,10 @@ export async function DELETE(
   console.log('🗑️ Delete resume API called for resume:', params.id)
 
   try {
-    // Get auth token from request headers
-    const authHeader = request.headers.get('authorization') || ''
-    console.log('🔐 Authorization header received:', authHeader ? `${authHeader.substring(0, 30)}...` : 'NONE')
+    const authHeader = getServerAuthHeader(request)
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.log('❌ Missing or invalid authorization header')
+    if (!authHeader) {
+      console.log('❌ Missing or invalid authorization')
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -20,7 +19,7 @@ export async function DELETE(
     }
 
     // Call backend API to delete resume
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/${params.id}`
+    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/resume/${params.id}`
     console.log('🌐 Calling backend:', backendUrl)
 
     const backendResponse = await fetch(backendUrl, {

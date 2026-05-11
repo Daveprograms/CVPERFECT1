@@ -11,8 +11,10 @@ export async function GET(request: NextRequest) {
     const page = searchParams.get('page') || '1'
     const limit = searchParams.get('limit') || '10'
     
-    // Get auth token from request headers
-    const authHeader = request.headers.get('authorization') || ''
+    // Prefer Authorization header; fall back to cookie (same as /api/auth/me)
+    const cookieStore = cookies()
+    const cookieToken = cookieStore.get('auth_token')?.value
+    const authHeader = request.headers.get('authorization') || (cookieToken ? `Bearer ${cookieToken}` : '')
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })

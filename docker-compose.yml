@@ -1,4 +1,3 @@
-version: '3.9'
 
 # ─────────────────────────────────────────────────────────────
 #  CVPerfect — Docker Compose (uses external Neon DB)

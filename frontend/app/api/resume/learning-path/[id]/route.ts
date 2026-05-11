@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerAuthHeader } from '@/lib/server-auth'
 
 export async function POST(
   request: NextRequest,
@@ -17,11 +18,10 @@ export async function POST(
       )
     }
 
-    // Get auth token from session/cookies
-    const authHeader = request.headers.get('authorization') || ''
+    const authHeader = getServerAuthHeader(request)
 
     // Call backend API
-    const backendResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/learning-path/${params.id}`, {
+    const backendResponse = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8000'}/api/resume/learning-path/${params.id}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

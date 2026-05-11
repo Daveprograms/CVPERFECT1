@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerAuthHeader } from '@/lib/server-auth'
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization') || ''
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const authHeader = getServerAuthHeader(request)
+    if (!authHeader) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     }
 
@@ -19,7 +20,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Job description is required' }, { status: 400 })
     }
 
-    const backendUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/resume/cover-letter/${resumeId}`
+    const backendUrl = `${process.env.BACKEND_URL || 'http://localhost:8000'}/api/resume/cover-letter/${resumeId}`
     const backendResponse = await fetch(backendUrl, {
       method: 'POST',
       headers: {
